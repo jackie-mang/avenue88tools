@@ -152,6 +152,7 @@ export default function TimelinePlanner() {
   const [submissionDays, setSubmissionDays] = useState(30);
   const [expandedStep, setExpandedStep] = useState(null);
   const [tracked, setTracked] = useState(false);
+  const [extensionMonths, setExtensionMonths] = useState(0);
 
   const milestones = useMemo(() => {
     if (!otpDate) return null;
@@ -167,7 +168,7 @@ export default function TimelinePlanner() {
     const hdbApproval = addWeeks(endorsement, 2);
     const completion = addWeeks(hdbAcceptance, 8);
 
-    return [
+    const result = [
       { label: "Intent to Sell (register by)", date: intentToSell, note: "At least 7 days before OTP", color: "#8B7355", icon: "📋" },
       { label: "OTP Granted", date: otp, note: "Buyer pays Option Fee (up to $1,000)", color: "#2A6B4F", icon: "📝" },
       { label: "Request for Value (submit by)", date: requestForValue, note: "Next working day after OTP", color: "#1B5E8A", icon: "📤" },
@@ -177,9 +178,22 @@ export default function TimelinePlanner() {
       { label: "HDB Acceptance (est.)", date: hdbAcceptance, note: "Within 28 working days · 8-week clock starts", color: "#6B3A5D", icon: "✅" },
       { label: "Endorse Documents (est.)", date: endorsement, note: "~3 weeks after acceptance", color: "#6B3A5D", icon: "✍️" },
       { label: "HDB Approval (est.)", date: hdbApproval, note: "~2 weeks after endorsement", color: "#6B3A5D", icon: "🏛️" },
-      { label: "Completion / Keys (est.)", date: completion, note: "8 weeks from acceptance · Earliest possible date", color: "#2A6B4F", icon: "🔑" }
+      { label: "Completion / Keys (est.)", date: completion, note: extensionMonths > 0 ? "8 weeks from acceptance · Extension of Stay begins" : "8 weeks from acceptance · Earliest possible date", color: "#2A6B4F", icon: "🔑" }
     ];
-  }, [otpDate, submissionDays]);
+
+    if (extensionMonths > 0) {
+      const extensionEnd = addDays(completion, extensionMonths * 30);
+      result.push({
+        label: `Extension of Stay Ends (${extensionMonths} month${extensionMonths > 1 ? "s" : ""})`,
+        date: extensionEnd,
+        note: "Seller must vacate · Buyer's MOP starts after this date",
+        color: "#C25E3A",
+        icon: "🏡"
+      });
+    }
+
+    return result;
+  }, [otpDate, submissionDays, extensionMonths]);
 
   // Track tool usage once when milestones first appear
   if (milestones && !tracked) {
@@ -191,7 +205,7 @@ export default function TimelinePlanner() {
       flatType: "",
       sizeSqm: "",
       floorLevel: "",
-      resultShown: `OTP: ${otpDate}, Submission: ${submissionDays} days`,
+      resultShown: `OTP: ${otpDate}, Submission: ${submissionDays} days, Extension: ${extensionMonths} months`,
       page: "Timeline Planner"
     });
   }
@@ -235,7 +249,7 @@ export default function TimelinePlanner() {
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8E6E0", padding: 28, boxShadow: "0 2px 16px rgba(0,0,0,0.04)", marginBottom: 32 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: "#1A1A1A" }}>📅 Enter Your Details</h3>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 600, color: "#6B6960", marginBottom: 6, display: "block" }}>OTP Grant Date *</label>
               <input
@@ -246,7 +260,7 @@ export default function TimelinePlanner() {
               />
             </div>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#6B6960", marginBottom: 6, display: "block" }}>Resale Submission Period</label>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#6B6960", marginBottom: 6, display: "block" }}>Submission Period</label>
               <select className="form-input" value={submissionDays} onChange={e => setSubmissionDays(Number(e.target.value))}>
                 <option value={7}>7 days</option>
                 <option value={14}>14 days</option>
@@ -257,7 +271,23 @@ export default function TimelinePlanner() {
                 <option value={90}>90 days</option>
               </select>
             </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#6B6960", marginBottom: 6, display: "block" }}>Extension of Stay</label>
+              <select className="form-input" value={extensionMonths} onChange={e => setExtensionMonths(Number(e.target.value))}>
+                <option value={0}>No extension</option>
+                <option value={1}>1 month</option>
+                <option value={2}>2 months</option>
+                <option value={3}>3 months (max)</option>
+              </select>
+            </div>
           </div>
+          {extensionMonths > 0 && (
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFF8E1", borderRadius: 8, border: "1px solid #F5E6B8" }}>
+              <p style={{ fontSize: 12, color: "#8B7355", lineHeight: 1.5 }}>
+                ⚠️ Extension of Stay requires: seller must have exercised an OTP on next property or have a confirmed BTO key collection date. Must be declared during resale application. Buyer's MOP starts only after extension ends.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Results */}

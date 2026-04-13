@@ -128,39 +128,46 @@ export default function LandingPage() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {tools.map((tool, i) => (
-            <div key={i} className="tool-card" style={{
-              background: "#fff",
-              borderRadius: 14,
-              padding: 28,
-              border: "1px solid #E8E6E0",
-              position: "relative",
-              overflow: "hidden"
-            }}
-              onMouseEnter={() => setActiveToolTip(i)}
-              onMouseLeave={() => setActiveToolTip(null)}
-            >
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: tool.color, opacity: activeToolTip === i ? 1 : 0.4, transition: "opacity 0.3s" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                <span style={{ fontSize: 32 }}>{tool.icon}</span>
-                <span className="status-badge" style={{
-                  background: tool.status === "Live" ? "#E8F5E9" : "#FFF3E0",
-                  color: tool.status === "Live" ? "#2E7D32" : "#E65100"
-                }}>
-                  {tool.status}
-                </span>
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10, color: "#1A1A1A" }}>{tool.title}</h3>
-              <p style={{ fontSize: 14, color: "#6B6960", lineHeight: 1.6 }}>{tool.desc}</p>
-              {tool.status === "Live" && tool.link && (
-                <div style={{ marginTop: 18 }}>
-                  <Link to={tool.link} style={{ fontSize: 14, fontWeight: 600, color: tool.color, cursor: "pointer", textDecoration: "none" }}>
-                    Try it now →
-                  </Link>
+          {tools.map((tool, i) => {
+            const CardWrapper = tool.link ? Link : "div";
+            const cardProps = tool.link ? { to: tool.link, style: { textDecoration: "none", color: "inherit" } } : {};
+            return (
+              <CardWrapper key={i} {...cardProps}>
+                <div className="tool-card" style={{
+                  background: "#fff",
+                  borderRadius: 14,
+                  padding: 28,
+                  border: "1px solid #E8E6E0",
+                  position: "relative",
+                  overflow: "hidden",
+                  height: "100%"
+                }}
+                  onMouseEnter={() => setActiveToolTip(i)}
+                  onMouseLeave={() => setActiveToolTip(null)}
+                >
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: tool.color, opacity: activeToolTip === i ? 1 : 0.4, transition: "opacity 0.3s" }} />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                    <span style={{ fontSize: 32 }}>{tool.icon}</span>
+                    <span className="status-badge" style={{
+                      background: tool.status === "Live" ? "#E8F5E9" : "#FFF3E0",
+                      color: tool.status === "Live" ? "#2E7D32" : "#E65100"
+                    }}>
+                      {tool.status}
+                    </span>
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10, color: "#1A1A1A" }}>{tool.title}</h3>
+                  <p style={{ fontSize: 14, color: "#6B6960", lineHeight: 1.6 }}>{tool.desc}</p>
+                  {tool.status === "Live" && tool.link && (
+                    <div style={{ marginTop: 18 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: tool.color }}>
+                        Try it now →
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              </CardWrapper>
+            );
+          })}
         </div>
       </div>
 
