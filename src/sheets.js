@@ -5,11 +5,14 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3dHmwpGu5rQ
 
 export function sendToSheet(data) {
   try {
-    fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
+    // Use URL params via GET request — most reliable method for Google Apps Script
+    const params = new URLSearchParams();
+    Object.entries(data).forEach(([key, value]) => {
+      params.append(key, value);
+    });
+    fetch(`${GOOGLE_SCRIPT_URL}?${params.toString()}`, {
+      method: "GET",
+      mode: "no-cors"
     });
   } catch (e) {
     console.log("Sheet logging failed:", e);
