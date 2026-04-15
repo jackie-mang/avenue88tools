@@ -3,7 +3,8 @@
 ## Pages
 - `/` — Landing Page (lead capture hub)
 - `/timeline` — HDB Resale Timeline Planner
-- `/valuation` — HDB Valuation Checker
+- `/valuation` — HDB Valuation Checker (with lead capture pop-up)
+- `/upgrader` — HDB Upgrader Timeline (Sell First / Buy First)
 
 ## Tech Stack
 - React 18 + Vite
@@ -21,4 +22,5 @@
 
 ## Google Sheets Integration
 The Google Apps Script URL is configured in `src/sheets.js`.
+The Apps Script code is in `google-apps-script.js` — paste into Google Apps Script editor.
 All leads and tool usage are logged to the connected Google Sheet.

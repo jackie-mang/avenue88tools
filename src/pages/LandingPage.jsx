@@ -32,13 +32,13 @@ export default function LandingPage() {
   const tools = [
     { icon:"📅", title:"HDB Resale Timeline Planner", desc:"Input your OTP date and get every milestone date calculated — from Intent to Sell through to Completion.", status:"Live", link:"/timeline" },
     { icon:"🏠", title:"HDB Valuation Checker", desc:"Check real HDB transaction data from data.gov.sg for your street — actual transacted prices, PSF, and trends.", status:"Live", link:"/valuation" },
+    { icon:"🔄", title:"HDB Upgrader Timeline", desc:"Plan your HDB sale and private purchase side by side — Sell First or Buy First, timed to avoid ABSD.", status:"Live", link:"/upgrader" },
     { icon:"💰", title:"Sales Proceeds Calculator", desc:"Find out how much cash you walk away with after loan repayment, CPF refund, commission, and legal fees.", status:"Coming Soon", link:null },
-    { icon:"📊", title:"Affordability Calculator", desc:"Check your TDSR-based borrowing power, monthly repayments, and upgrade feasibility.", status:"Coming Soon", link:null }
   ];
 
   const handleSubmit = () => {
     if (!form.name || !form.phone) return;
-    sendToSheet({ type:"lead", name:form.name, phone:form.phone, email:form.email, town:form.town, propertyType:form.propertyType, helpWith:form.helpWith, sourcePage:"Landing Page" });
+    sendToSheet({type:"lead",name:form.name,phone:form.phone,email:form.email,town:form.town,propertyType:form.propertyType,helpWith:form.helpWith,sourcePage:"Landing Page"});
     setSubmitted(true);
   };
 
@@ -76,6 +76,7 @@ export default function LandingPage() {
             <a href="/" className="nav-link nav-active">Home</a>
             <a href="/timeline" className="nav-link">Timeline</a>
             <a href="/valuation" className="nav-link">Valuation</a>
+            <a href="/upgrader" className="nav-link">Upgrader</a>
             <a href="#contact" className="nav-link">Contact</a>
           </div>
         </div>

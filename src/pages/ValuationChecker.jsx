@@ -81,7 +81,7 @@ export default function ValuationChecker(){
     eLow=Math.round(eLow*(1+flAdj)/1000)*1000;eMid=Math.round(eMid*(1+flAdj)/1000)*1000;eHigh=Math.round(eHigh*(1+flAdj)/1000)*1000;
     const s=d[0];
     setResult({eLow,eHigh,eMid,avgPSF,minPSF,maxPSF,avgPrice,medianPrice:Math.round(medianPrice),total:d.length,dateRange:`${d[d.length-1].month} to ${d[0].month}`,town:s.town,lease:s.lease_commence_date,remaining:s.remaining_lease,flNote,flAdj,street:s.street_name});
-    sendToSheet({type:"tool_usage",tool:"Valuation Checker",streetName:fullAddress.toUpperCase(),flatType,sizeSqm:sizeSqm||"",floorLevel:floor||"",resultShown:`$${eLow.toLocaleString()}-$${eHigh.toLocaleString()} AvgPSF:$${avgPSF} ${d.length}txns`,page:"Valuation Checker"});
+    sendToSheet({type:"tool_usage",tool:"Valuation Checker",streetName:fullAddress.toUpperCase(),flatType,sizeSqm:sizeSqm||"",floorLevel:floor||"",resultShown:`$${eLow.toLocaleString()}-$${eHigh.toLocaleString()} PSF:$${avgPSF} ${d.length}txns`,page:"Valuation Checker"});
     setTransactions(records.slice(0,15).map(r=>({month:r.month,block:r.block,street:r.street_name,storey:r.storey_range,area:r.floor_area_sqm,price:parseFloat(r.resale_price),psf:calcPsf(parseFloat(r.resale_price),parseFloat(r.floor_area_sqm)),remaining:r.remaining_lease})));
   }
 
@@ -149,6 +149,7 @@ export default function ValuationChecker(){
             <a href="/" className="nav-link">Home</a>
             <a href="/timeline" className="nav-link">Timeline</a>
             <a href="/valuation" className="nav-link nav-active">Valuation</a>
+            <a href="/upgrader" className="nav-link">Upgrader</a>
             <a href="/" className="nav-link">Contact</a>
           </div>
         </div>

@@ -29,7 +29,6 @@ export default function TimelinePlanner() {
   const [submissionDays,setSubmissionDays]=useState(30);
   const [extensionMonths,setExtensionMonths]=useState(0);
   const [expandedStep,setExpandedStep]=useState(null);
-  const [tracked,setTracked]=useState(false);
 
   const milestones=useMemo(()=>{
     if(!otpDate)return null;
@@ -52,6 +51,7 @@ export default function TimelinePlanner() {
     return r;
   },[otpDate,submissionDays,extensionMonths]);
 
+  const [tracked,setTracked]=useState(false);
   if(milestones&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Timeline Planner",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:`OTP:${otpDate} Sub:${submissionDays}d Ext:${extensionMonths}m`,page:"Timeline Planner"})}
 
   const totalDays=milestones?Math.round((milestones[milestones.length-1].date-milestones[0].date)/(1000*60*60*24)):0;
@@ -82,6 +82,7 @@ export default function TimelinePlanner() {
             <a href="/" className="nav-link">Home</a>
             <a href="/timeline" className="nav-link nav-active">Timeline</a>
             <a href="/valuation" className="nav-link">Valuation</a>
+            <a href="/upgrader" className="nav-link">Upgrader</a>
             <a href="/" className="nav-link">Contact</a>
           </div>
         </div>
