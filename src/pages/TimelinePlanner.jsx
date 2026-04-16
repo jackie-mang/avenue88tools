@@ -7,8 +7,9 @@ function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
 function addWorkingDays(d,n){const r=new Date(d);let a=0;while(a<n){r.setDate(r.getDate()+1);if(r.getDay()!==0&&r.getDay()!==6)a++}return r}
 function getNextWorkingDay(d){const r=new Date(d);r.setDate(r.getDate()+1);while(r.getDay()===0||r.getDay()===6)r.setDate(r.getDate()+1);return r}
 function addWeeks(d,w){return addDays(d,w*7)}
-function fmt(d){const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return`${days[d.getDay()]}, ${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`}
-function fmtShort(d){const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return`${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`}
+function pad(n){return n<10?"0"+n:n}
+function fmt(d){const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return`${days[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`}
+function fmtShort(d){return`${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`}
 
 const GUIDE=[
   {step:1,title:"Register Intent to Sell",points:["Register on HDB Resale Portal via Singpass. Valid 12 months, no fee.","Mandatory 7-day cooling-off period before OTP can be granted."]},

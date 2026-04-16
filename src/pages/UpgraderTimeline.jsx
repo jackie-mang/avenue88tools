@@ -7,8 +7,9 @@ function addD(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
 function addWD(d,n){const r=new Date(d);let a=0;while(a<n){r.setDate(r.getDate()+1);if(r.getDay()!==0&&r.getDay()!==6)a++}return r}
 function nextWD(d){const r=new Date(d);r.setDate(r.getDate()+1);while(r.getDay()===0||r.getDay()===6)r.setDate(r.getDate()+1);return r}
 function addW(d,w){return addD(d,w*7)}
-function fmt(d){const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return`${days[d.getDay()]}, ${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`}
-function fmtS(d){const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return`${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`}
+function pad(n){return n<10?"0"+n:n}
+function fmt(d){const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return`${days[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`}
+function fmtS(d){return`${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`}
 function daysBetween(a,b){return Math.round((b-a)/(1000*60*60*24))}
 
 export default function UpgraderTimeline(){
@@ -81,7 +82,7 @@ export default function UpgraderTimeline(){
     // Build unified milestone list
     const milestones=[
       {date:intentToSell,label:"Intent to Sell",note:"Register on HDB Portal · 7-day cooling off",track:"hdb",icon:"📋"},
-      {date:hdbOTP,label:mode==="buy_first"?"HDB OTP Granted (Latest by)":"HDB OTP Granted",note:mode==="buy_first"?"Must grant OTP in time for HDB Exercise before Private Exercise · HFE approved before OTP":"Buyer pays option fee (up to $1,000) · HFE approved before OTP",track:"hdb",icon:"📝",highlight:mode==="buy_first"},
+      {date:hdbOTP,label:mode==="buy_first"?"HDB OTP Granted (Latest by) !":"HDB OTP Granted",note:mode==="buy_first"?"Must grant OTP in time for HDB Exercise before Private Exercise · HFE approved before OTP":"Buyer pays option fee (up to $1,000) · HFE approved before OTP",track:"hdb",icon:"📝",highlight:mode==="buy_first"},
       {date:requestForValue,label:"Request for Value",note:"Submit by next working day after OTP",track:"hdb",icon:"📤"},
       {date:valuationResult,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"🏠"},
     ];
@@ -90,19 +91,19 @@ export default function UpgraderTimeline(){
       milestones.push({date:pvtOTP,label:"Private OTP Granted",note:`Option fee: 1–5% · Exercise period: ${pvtExercisePeriodBF} days`,track:"pvt",icon:"🔑",highlight:false});
     }
 
-    milestones.push({date:hdbExercise,label:"HDB Exercise OTP",note:"Must be BEFORE Private Exercise · Buyer pays up to $4,000",track:"hdb",icon:"⭐",highlight:true});
+    milestones.push({date:hdbExercise,label:"HDB Exercise OTP !",note:"Must be BEFORE Private Exercise · Buyer pays up to $4,000",track:"hdb",icon:"✏️",highlight:true});
 
     if(mode==="sell_first"){
       milestones.push({date:pvtOTP,label:"Private OTP Granted",note:`Option fee: 1% · Exercise period: ${pvtExercisePeriod} days`,track:"pvt",icon:"🔑"});
     }
 
-    milestones.push({date:pvtExercise,label:"Private Exercise OTP",note:"Must be AFTER HDB Exercise · Pay 5% less option fee",track:"pvt",icon:"⭐",highlight:true});
+    milestones.push({date:pvtExercise,label:"Private Exercise OTP !",note:"Must be AFTER HDB Exercise · Pay 5% less option fee",track:"pvt",icon:"✏️",highlight:true});
     milestones.push({date:resaleApp,label:"HDB Resale Application",note:`${hdbSubmission}-day agreed period · $80 per party`,track:"hdb",icon:"📄"});
     milestones.push({date:bsdDue,label:"BSD Payable",note:"3% to 6% · Within 14 days of S&P · Legal fees",track:"pvt",icon:"💵"});
     milestones.push({date:hdbAcceptance,label:"HDB Acceptance",note:"Within 28 working days · 8-week clock starts",track:"hdb",icon:"✅"});
     milestones.push({date:hdbEndorsement,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"✍️"});
     milestones.push({date:hdbApproval,label:"HDB Approval",note:"~2 weeks after endorsement · Bridging loan can disburse after this",track:"hdb",icon:"🏛️"});
-    milestones.push({date:pvtCompletionDate,label:"Private Completion",note:"Get keys to private property · Start renovation",track:"pvt",icon:"🔑",highlight:true});
+    milestones.push({date:pvtCompletionDate,label:"Private Completion !",note:"Get keys to private property · Start renovation",track:"pvt",icon:"🔑",highlight:true});
     milestones.push({date:hdbCompletionDate,label:"HDB Completion",note:extension>0?"Physical appt at HDB · Extension of Stay begins":"Physical appt at HDB · Keys handover",track:"hdb",icon:"🏢"});
 
     if(extension>0){
@@ -365,7 +366,7 @@ export default function UpgraderTimeline(){
 
                       {/* Center dot */}
                       <div style={{display:"flex",justifyContent:"center",alignItems:"center",position:"relative"}}>
-                        <div style={{width:14,height:14,borderRadius:"50%",background:m.highlight?color:"#fff",border:`3px solid ${color}`,zIndex:2,boxShadow:"0 0 0 3px #fff"}}/>
+                        <div style={{width:14,height:14,borderRadius:"50%",background:color,border:`3px solid #fff`,zIndex:2,boxShadow:`0 0 0 2px ${color}`}}/>
                       </div>
 
                       {/* Right column (Private on desktop, both tracks on mobile) */}
@@ -443,6 +444,7 @@ export default function UpgraderTimeline(){
                 {[
                   "HDB Exercise Date must be BEFORE Private Exercise Date to avoid 20% ABSD.",
                   "Bridging Loan must be applied together with Mortgage Loan. HDB Approval must be in place before bridging loan disbursement.",
+                  "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion (cash + CPF refund). Delays may incur additional interest.",
                   "Extension of Stay requires: exercised OTP on next property, declared during resale application. Buyer's MOP starts after extension ends.",
                   `Renovation window: ${t.renoWindowDays} days from Private Completion to HDB move-out.`,
                   mode==="buy_first"?"Longer private exercise period (2–6 months) requires higher option fee (1–5%). Negotiate with seller.":"Private exercise period can be extended beyond 14 days if both parties agree.",
