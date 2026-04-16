@@ -21,7 +21,7 @@ const GUIDE=[
   {step:8,title:"Endorse Documents (~3 weeks after acceptance)",points:["HDB posts documents on My Flat Dashboard. Both parties endorse.","Buyer makes initial payment (stamp duty, down payment)."]},
   {step:9,title:"HDB Approval (~2 weeks after endorsement)",points:["Approval letter states completion appointment date.","Both parties may defer via MyRequest@HDB."]},
   {step:10,title:"Pre-Completion",points:["Settle Town Council S&CC, utilities. Prepare keys for handover."]},
-  {step:11,title:"Completion (HDB Hub)",points:["Keys handed over. Seller receives proceeds after deductions.","CPF refunds processed within 15 working days."]}
+  {step:11,title:"Completion (HDB Hub)",points:["Keys handed over. Seller receives proceeds after deductions.","CPF refunds processed within 7–14 working days."]}
 ];
 
 export default function TimelinePlanner() {
@@ -109,7 +109,7 @@ export default function TimelinePlanner() {
             <div>
               <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Submission Period</label>
               <select className="fi" value={submissionDays} onChange={e=>setSubmissionDays(Number(e.target.value))}>
-                {[7,14,21,30,45,60,90].map(d=><option key={d} value={d}>{d} days</option>)}
+                {[7,14,21,30,45,60,80].map(d=><option key={d} value={d}>{d} days{d===80?" (max)":""}</option>)}
               </select>
             </div>
             <div>

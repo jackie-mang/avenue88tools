@@ -113,7 +113,7 @@ export default function UpgraderTimeline(){
     milestones.sort((a,b)=>a.date-b.date);
 
     const bridgingLoanDays=daysBetween(pvtCompletionDate,hdbCompletionDate);
-    const cpfRefundDate=addWD(hdbCompletionDate,15);
+    const cpfRefundDate=addWD(hdbCompletionDate,14);
     const cpfRefundDays=daysBetween(pvtCompletionDate,cpfRefundDate);
 
     return {
@@ -234,7 +234,7 @@ export default function UpgraderTimeline(){
                   <div>
                     <label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label>
                     <select className="fi" value={hdbSubmission} onChange={e=>setHdbSubmission(Number(e.target.value))}>
-                      {[7,14,21,30,45,60].map(d=><option key={d} value={d}>{d} days</option>)}
+                      {[7,14,21,30,45,60,80].map(d=><option key={d} value={d}>{d} days{d===80?" (max)":""}</option>)}
                     </select>
                     <div style={{fontSize:11,color:mode==="buy_first"?C.green:"#92600A",marginTop:4,fontWeight:500}}>
                       {mode==="buy_first"?"💡 Tip: Shorter is better — speeds up HDB completion":"💡 Tip: Longer gives more time to find your private property"}
@@ -381,7 +381,7 @@ export default function UpgraderTimeline(){
                             ~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)
                           </div>
                           <div style={{fontSize:12,color:C.grey500,marginTop:6,paddingTop:6,borderTop:`1px solid ${C.blue}22`}}>
-                            📌 CPF refund: ~15 working days after HDB Completion → est. <strong>{fmtS(t.cpfRefundDate)}</strong>
+                            📌 CPF refund: 7–14 working days after HDB Completion → est. by <strong>{fmtS(t.cpfRefundDate)}</strong>
                           </div>
                           <div style={{fontSize:11,color:C.grey500,marginTop:2}}>
                             Full sale proceeds (cash + CPF) expected ~{t.cpfRefundDays} days after private completion
