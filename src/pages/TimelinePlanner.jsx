@@ -106,6 +106,7 @@ export default function TimelinePlanner() {
             <div>
               <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>OTP Grant Date *</label>
               <input className="fi" type="date" value={otpDate} onChange={e=>setOtpDate(e.target.value)}/>
+              {otpDate&&<div style={{fontSize:11,color:C.blue,marginTop:4,fontWeight:600}}>{fmtShort(new Date(otpDate+"T00:00:00"))}</div>}
             </div>
             <div>
               <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Submission Period</label>
