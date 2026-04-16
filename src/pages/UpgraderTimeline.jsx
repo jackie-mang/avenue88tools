@@ -14,6 +14,7 @@ function daysBetween(a,b){return Math.round((b-a)/(1000*60*60*24))}
 export default function UpgraderTimeline(){
   const [mode,setMode]=useState("");
   const [startDate,setStartDate]=useState("");
+  const [safetyMode,setSafetyMode]=useState("after_hdb_exercise"); // "after_hdb_exercise" or "after_hdb_acceptance"
   // HDB inputs
   const [hdbSubmission,setHdbSubmission]=useState(30);
   const [extension,setExtension]=useState(3);
@@ -24,23 +25,46 @@ export default function UpgraderTimeline(){
 
   const timeline=useMemo(()=>{
     if(!mode||!startDate)return null;
-    let hdbOTP,hdbExercise,pvtOTP,pvtExercise;
+    let hdbOTP,hdbExercise,pvtOTP,pvtExercise,hdbAcceptance;
     if(mode==="sell_first"){
       hdbOTP=new Date(startDate+"T00:00:00");
       hdbExercise=addD(hdbOTP,21);
-      pvtOTP=addD(hdbExercise,1);
+      // Calculate HDB acceptance (need for safety mode)
+      const resaleAppTmp=addD(hdbExercise,hdbSubmission);
+      hdbAcceptance=addWD(resaleAppTmp,28);
+      if(safetyMode==="after_hdb_acceptance"){
+        pvtOTP=addD(hdbAcceptance,1);
+      } else {
+        pvtOTP=addD(hdbExercise,1);
+      }
       pvtExercise=addD(pvtOTP,pvtExercisePeriod);
     } else {
       pvtOTP=new Date(startDate+"T00:00:00");
       pvtExercise=addD(pvtOTP,pvtExercisePeriodBF);
-      hdbExercise=addD(pvtExercise,-1);
-      hdbOTP=addD(hdbExercise,-21);
+      if(safetyMode==="after_hdb_acceptance"){
+        // Work backwards: HDB Acceptance must be before Private Exercise
+        // Acceptance = Exercise + submission + 28WD
+        // So: Exercise = Acceptance - 28WD - submission
+        // Acceptance should be 1 day before Private Exercise
+        hdbAcceptance=addD(pvtExercise,-1);
+        // Work backwards to find HDB Exercise
+        // Approximate: 28 working days ≈ 40 calendar days
+        const hdbExerciseBack=addD(hdbAcceptance,-40-hdbSubmission);
+        hdbExercise=hdbExerciseBack;
+        hdbOTP=addD(hdbExercise,-21);
+      } else {
+        hdbExercise=addD(pvtExercise,-1);
+        hdbOTP=addD(hdbExercise,-21);
+        const resaleAppTmp=addD(hdbExercise,hdbSubmission);
+        hdbAcceptance=addWD(resaleAppTmp,28);
+      }
     }
     const intentToSell=addD(hdbOTP,-7);
     const requestForValue=nextWD(hdbOTP);
     const valuationResult=addWD(hdbOTP,5);
     const resaleApp=addD(hdbExercise,hdbSubmission);
-    const hdbAcceptance=addWD(resaleApp,28);
+    // Recalculate acceptance after any adjustments
+    hdbAcceptance=addWD(resaleApp,28);
     const hdbEndorsement=addW(hdbAcceptance,3);
     const hdbApproval=addW(hdbEndorsement,2);
     const hdbCompletionDate=addW(hdbAcceptance,8);
@@ -98,11 +122,11 @@ export default function UpgraderTimeline(){
       pvtCompletionS:pvtCompletionDate,hdbCompletionS:hdbCompletionDate,
       bridgingLoanDays,cpfRefundDate,cpfRefundDays
     };
-  },[mode,startDate,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion]);
+  },[mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion]);
 
   const t=timeline;
   const [tracked,setTracked]=useState(false);
-  if(t&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Upgrader Timeline",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:`${mode} HDBSub:${hdbSubmission}d Ext:${extension}m PvtComp:${pvtCompletion}w`,page:"Upgrader Timeline"})}
+  if(t&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Upgrader Timeline",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:`${mode} Safety:${safetyMode} HDBSub:${hdbSubmission}d Ext:${extension}m PvtComp:${pvtCompletion}w`,page:"Upgrader Timeline"})}
 
   return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',sans-serif",color:C.grey900}}>
@@ -176,11 +200,29 @@ export default function UpgraderTimeline(){
             {/* Starting Point */}
             <div className="section-card">
               <div className="section-label" style={{color:C.grey500}}>Starting Point</div>
-              <div>
-                <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>
-                  {mode==="sell_first"?"HDB OTP Grant Date *":"Private OTP Grant Date *"}
-                </label>
-                <input className="fi" type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{maxWidth:280}}/>
+              <div style={{display:"grid",gap:16}}>
+                <div>
+                  <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>
+                    {mode==="sell_first"?"HDB OTP Grant Date *":"Private OTP Grant Date *"}
+                  </label>
+                  <input className="fi" type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{maxWidth:280}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:8,display:"block"}}>Private Purchase Exercise Timing</label>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <button type="button" onClick={()=>setSafetyMode("after_hdb_exercise")} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${safetyMode==="after_hdb_exercise"?C.blue:C.grey200}`,background:safetyMode==="after_hdb_exercise"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>
+                      <div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_exercise"?C.blue:C.grey900,marginBottom:2}}>After HDB Exercise</div>
+                      <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Standard · Faster timeline</div>
+                    </button>
+                    <button type="button" onClick={()=>setSafetyMode("after_hdb_acceptance")} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${safetyMode==="after_hdb_acceptance"?C.blue:C.grey200}`,background:safetyMode==="after_hdb_acceptance"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>
+                      <div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_acceptance"?C.blue:C.grey900,marginBottom:2}}>After HDB Acceptance</div>
+                      <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Extra safe · Wait for HDB confirmation</div>
+                    </button>
+                  </div>
+                  <div style={{fontSize:11,color:C.grey500,marginTop:8,lineHeight:1.5}}>
+                    {safetyMode==="after_hdb_acceptance"?"💡 Waiting for HDB Acceptance ensures the sale is officially accepted before committing to the private purchase. Safer but adds ~30 days to the timeline.":"💡 Exercise private right after HDB exercise — quickest timeline. Some risk if HDB rejects the application (rare)."}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -387,6 +429,10 @@ export default function UpgraderTimeline(){
       <div style={{background:C.grey100,padding:"28px 20px",textAlign:"center",marginTop:36,borderTop:`1px solid ${C.grey200}`}}>
         <div style={{color:C.grey900,fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:6}}>Avenue 88</div>
         <div style={{color:C.grey500,fontSize:12}}>Huttons / Navis · © 2026 Avenue 88</div>
+        <div style={{maxWidth:720,margin:"16px auto 0",textAlign:"left",background:"#fff",border:`1px solid ${C.grey200}`,borderRadius:8,padding:"14px 16px"}}>
+          <strong style={{color:C.grey600,fontSize:11,letterSpacing:.5,textTransform:"uppercase"}}>Disclaimer</strong>
+          <p style={{color:C.grey500,fontSize:11,lineHeight:1.6,marginTop:6}}>The information and tools provided on this website are for general reference only and do not constitute legal, financial, or professional advice. Timelines, figures, and valuations are estimates based on available public data and typical HDB/URA processes, and actual outcomes may vary due to individual circumstances, public holidays, policy changes, or processing variations. Users should verify all details with HDB, CPF Board, IRAS, their bank, and a qualified legal or financial professional before making any decisions. Avenue 88, Huttons Asia Pte Ltd, and its representatives shall not be liable for any loss or damage arising from reliance on the information provided.</p>
+        </div>
       </div>
     </div>
   );

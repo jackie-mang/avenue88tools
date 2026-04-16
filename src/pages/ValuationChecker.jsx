@@ -283,6 +283,10 @@ export default function ValuationChecker(){
       <div style={{background:C.grey100,padding:"28px 20px",textAlign:"center",marginTop:36,borderTop:`1px solid ${C.grey200}`}}>
         <div style={{color:C.grey900,fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:6}}>Avenue 88</div>
         <div style={{color:C.grey500,fontSize:12}}>Huttons / Navis · Data: HDB via data.gov.sg · © 2026 Avenue 88</div>
+        <div style={{maxWidth:720,margin:"16px auto 0",textAlign:"left",background:"#fff",border:`1px solid ${C.grey200}`,borderRadius:8,padding:"14px 16px"}}>
+          <strong style={{color:C.grey600,fontSize:11,letterSpacing:.5,textTransform:"uppercase"}}>Disclaimer</strong>
+          <p style={{color:C.grey500,fontSize:11,lineHeight:1.6,marginTop:6}}>The information and tools provided on this website are for general reference only and do not constitute legal, financial, or professional advice. Timelines, figures, and valuations are estimates based on available public data and typical HDB/URA processes, and actual outcomes may vary due to individual circumstances, public holidays, policy changes, or processing variations. Users should verify all details with HDB, CPF Board, IRAS, their bank, and a qualified legal or financial professional before making any decisions. Avenue 88, Huttons Asia Pte Ltd, and its representatives shall not be liable for any loss or damage arising from reliance on the information provided.</p>
+        </div>
       </div>
     </div>
   );
