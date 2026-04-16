@@ -145,11 +145,14 @@ export default function UpgraderTimeline(){
         .mode-btn:hover{border-color:${C.blue};background:${C.bluePale}}
         .mode-btn.active{border-color:${C.blue};background:${C.blueLight}}
         .alert-box{padding:14px 18px;border-radius:10px;margin-bottom:12px;font-size:13px;line-height:1.6}
-        .fish-line{position:relative;padding-left:32px;padding-bottom:0;margin-left:20px}
-        .fish-line::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:${C.grey200}}
-        .fish-node{position:relative;padding:14px 0}
-        .fish-dot{width:14px;height:14px;border-radius:50%;position:absolute;left:-39px;top:17px;border:2px solid #fff;box-shadow:0 0 0 2px currentColor}
-        .fish-connector{position:absolute;left:-25px;top:23px;width:25px;height:1px}
+        @media (max-width: 640px) {
+          .fishbone-row { grid-template-columns: 24px 1fr !important; }
+          .fishbone-row .col-left { display: none; }
+          .fishbone-row .col-right { padding-left: 12px !important; }
+          .fishbone-row .col-right > div { display: block !important; text-align: left !important; }
+          .fishbone-hdb-mobile { display: block !important; }
+          .fishbone-center-line { left: 12px !important; transform: none !important; }
+        }
         .section-card{background:#fff;border-radius:14px;border:1px solid ${C.grey200};padding:22px;margin-bottom:16px}
         .section-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
       `}</style>
@@ -326,69 +329,108 @@ export default function UpgraderTimeline(){
             {t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.blueLight,border:`1px solid ${C.blue}33`,color:C.blueDark}}>💰 <strong>Bridging Loan OK</strong> — HDB Approval ({fmtS(t.hdbApproval)}) is before Private Completion ({fmtS(t.pvtCompletionDate)}). Apply bridging loan together with mortgage loan.</div>}
             {t.gapExerciseDays>0&&t.gapExerciseDays<7&&t.absdSafe&&<div className="alert-box" style={{background:C.orangeLight,border:`1px solid ${C.orangeBorder}`,color:"#92600A"}}>⚠️ <strong>Tight Timeline:</strong> Only {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} gap between exercise dates. Consider more buffer.</div>}
 
-            {/* Unified Fishbone Timeline */}
-            <div style={{background:"#fff",borderRadius:16,border:`1px solid ${C.grey200}`,padding:"24px 24px 24px 48px",marginBottom:24,overflow:"hidden"}}>
-              <h3 style={{fontSize:16,fontWeight:700,marginBottom:20,marginLeft:-24}}>Combined Timeline</h3>
-              <div className="fish-line">
+            {/* Unified Fishbone Timeline - HDB Left | Center Line | Private Right */}
+            <div style={{background:"#fff",borderRadius:16,border:`1px solid ${C.grey200}`,padding:"24px 20px",marginBottom:24}}>
+              <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Combined Timeline</h3>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:14,borderBottom:`1px solid ${C.grey100}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>🏢 Sell HDB</span></div>
+                <div style={{fontSize:11,color:C.grey500,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>Buy Private 🏡</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
+              </div>
+
+              <div style={{position:"relative"}}>
+                {/* Center vertical line */}
+                <div className="fishbone-center-line" style={{position:"absolute",left:"50%",top:0,bottom:0,width:2,background:C.grey200,transform:"translateX(-50%)",zIndex:0}}/>
+
                 {t.milestones.map((m,i)=>{
                   const isHdb=m.track==="hdb";
                   const color=isHdb?C.blue:C.orange;
                   const bgColor=isHdb?C.blueLight:C.orangeLight;
+                  const darkColor=isHdb?C.blueDark:C.orangeDark;
                   return(
-                    <div key={i} className="fish-node" style={{borderBottom:i<t.milestones.length-1?`1px solid ${C.grey100}`:"none"}}>
-                      <div className="fish-dot" style={{color,background:m.highlight?color:"#fff"}}/>
-                      <div className="fish-connector" style={{background:color}}/>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                        <div style={{flex:1,minWidth:200}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <span style={{fontSize:16}}>{m.icon}</span>
-                            <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                            <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:10,background:bgColor,color:isHdb?C.blueDark:C.orangeDark}}>{isHdb?"HDB":"PRIVATE"}</span>
+                    <div key={i} className="fishbone-row" style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 40px 1fr",gap:0,alignItems:"center",marginBottom:12,zIndex:1}}>
+                      {/* Left column (HDB on desktop) */}
+                      <div className="col-left" style={{textAlign:"right",paddingRight:12}}>
+                        {isHdb&&(
+                          <div style={{display:"inline-block",background:bgColor,border:`1.5px solid ${color}33`,borderRadius:10,padding:"10px 14px",textAlign:"right",maxWidth:"100%"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginBottom:3}}>
+                              <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
+                              <span style={{fontSize:14}}>{m.icon}</span>
+                            </div>
+                            <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+                            <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
                           </div>
-                          <div style={{fontSize:12,color:C.grey500,marginTop:3,paddingLeft:24}}>{m.note}</div>
+                        )}
+                      </div>
+
+                      {/* Center dot */}
+                      <div style={{display:"flex",justifyContent:"center",alignItems:"center",position:"relative"}}>
+                        <div style={{width:14,height:14,borderRadius:"50%",background:m.highlight?color:"#fff",border:`3px solid ${color}`,zIndex:2,boxShadow:"0 0 0 3px #fff"}}/>
+                      </div>
+
+                      {/* Right column (Private on desktop, both tracks on mobile) */}
+                      <div className="col-right" style={{textAlign:"left",paddingLeft:12}}>
+                        <div style={{display:!isHdb?"inline-block":"none"}}>
+                          <div style={{background:bgColor,border:`1.5px solid ${color}33`,borderRadius:10,padding:"10px 14px",textAlign:"left"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-start",marginBottom:3}}>
+                              <span style={{fontSize:14}}>{m.icon}</span>
+                              <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
+                            </div>
+                            <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+                            <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
+                          </div>
                         </div>
-                        <div style={{fontSize:13,fontWeight:700,color,whiteSpace:"nowrap",background:bgColor,padding:"5px 12px",borderRadius:8}}>{fmt(m.date)}</div>
+                        {/* Mobile-only: HDB also shown on right */}
+                        <div className="fishbone-hdb-mobile" style={{display:"none"}}>
+                          {isHdb&&(
+                            <div style={{background:bgColor,border:`1.5px solid ${color}33`,borderRadius:10,padding:"10px 14px",textAlign:"left"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                                <span style={{fontSize:14}}>{m.icon}</span>
+                                <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
+                                <span style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:10,background:"#fff",color:darkColor}}>HDB</span>
+                              </div>
+                              <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+                              <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
 
-                {/* Renovation Window & Bridging Loan — at the end */}
+                {/* Renovation Window & Bridging Loan - full width at the end */}
                 {t.renoWindowDays>0&&(
-                  <div className="fish-node" style={{paddingTop:8}}>
-                    <div className="fish-dot" style={{color:C.green,background:C.green}}/>
-                    <div className="fish-connector" style={{background:C.green}}/>
-                    <div style={{display:"grid",gap:12}}>
-                      {/* Renovation Window */}
-                      <div style={{background:C.greenLight,border:"1px solid #BBF7D0",borderRadius:10,padding:"12px 16px"}}>
-                        <div style={{fontSize:13,fontWeight:700,color:C.green}}>🔨 Renovation Window</div>
-                        <div style={{fontSize:12,color:C.green,marginTop:4}}>
-                          {fmtS(t.pvtCompletionS)} (get private keys) → {fmtS(t.extensionEnd)} (move out of HDB)
+                  <div style={{position:"relative",marginTop:20,paddingTop:20,borderTop:`1px dashed ${C.grey200}`,display:"grid",gap:12,zIndex:1,background:"#fff"}}>
+                    {/* Renovation Window */}
+                    <div style={{background:C.greenLight,border:"1px solid #BBF7D0",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
+                      <div style={{fontSize:14,fontWeight:700,color:C.green,marginBottom:4}}>🔨 Renovation Window</div>
+                      <div style={{fontSize:12,color:C.green,marginBottom:4}}>
+                        {fmtS(t.pvtCompletionS)} (get private keys) → {fmtS(t.extensionEnd)} (move out of HDB)
+                      </div>
+                      <div style={{fontSize:15,fontWeight:700,color:C.green}}>
+                        {t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)
+                      </div>
+                    </div>
+
+                    {/* Bridging Loan Period */}
+                    {t.bridgingLoanDays>0&&(
+                      <div style={{background:C.blueLight,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
+                        <div style={{fontSize:14,fontWeight:700,color:C.blueDark,marginBottom:4}}>💰 Bridging Loan Period</div>
+                        <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>
+                          {fmtS(t.pvtCompletionS)} (private completion) → {fmtS(t.hdbCompletionS)} (HDB completion)
                         </div>
-                        <div style={{fontSize:14,fontWeight:700,color:C.green,marginTop:4}}>
-                          {t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)
+                        <div style={{fontSize:15,fontWeight:700,color:C.blueDark,marginBottom:8}}>
+                          ~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)
+                        </div>
+                        <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:`1px solid ${C.blue}22`}}>
+                          📌 CPF refund: 7–14 working days after HDB Completion → est. by <strong>{fmtS(t.cpfRefundDate)}</strong>
+                        </div>
+                        <div style={{fontSize:11,color:C.grey500,marginTop:2}}>
+                          Full sale proceeds (cash + CPF) expected ~{t.cpfRefundDays} days after private completion
                         </div>
                       </div>
-
-                      {/* Bridging Loan Period */}
-                      {t.bridgingLoanDays>0&&(
-                        <div style={{background:C.blueLight,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 16px"}}>
-                          <div style={{fontSize:13,fontWeight:700,color:C.blueDark}}>💰 Bridging Loan Period</div>
-                          <div style={{fontSize:12,color:C.blueDark,marginTop:4}}>
-                            {fmtS(t.pvtCompletionS)} (private completion) → {fmtS(t.hdbCompletionS)} (HDB completion)
-                          </div>
-                          <div style={{fontSize:14,fontWeight:700,color:C.blueDark,marginTop:4}}>
-                            ~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)
-                          </div>
-                          <div style={{fontSize:12,color:C.grey500,marginTop:6,paddingTop:6,borderTop:`1px solid ${C.blue}22`}}>
-                            📌 CPF refund: 7–14 working days after HDB Completion → est. by <strong>{fmtS(t.cpfRefundDate)}</strong>
-                          </div>
-                          <div style={{fontSize:11,color:C.grey500,marginTop:2}}>
-                            Full sale proceeds (cash + CPF) expected ~{t.cpfRefundDays} days after private completion
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
