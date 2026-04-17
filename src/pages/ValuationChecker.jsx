@@ -86,22 +86,37 @@ export default function ValuationChecker(){
   var [leadSubmitted,setLeadSubmitted]=useState(false);
   var dropdownRef=useRef(null);
 
-  // Fetch unique street names on mount
+  // Street abbreviation map for manual input fallback
+  var ABBR=[[/\bSTREET\b/g,"ST"],[/\bAVENUE\b/g,"AVE"],[/\bDRIVE\b/g,"DR"],[/\bROAD\b/g,"RD"],[/\bCRESCENT\b/g,"CRES"],[/\bCLOSE\b/g,"CL"],[/\bTERRACE\b/g,"TER"],[/\bPLACE\b/g,"PL"],[/\bBOULEVARD\b/g,"BLVD"],[/\bCENTRAL\b/g,"CTRL"],[/\bNORTH\b/g,"NTH"],[/\bSOUTH\b/g,"STH"],[/\bGARDENS\b/g,"GDNS"],[/\bHEIGHTS\b/g,"HTS"],[/\bPARK\b/g,"PK"],[/\bJALAN\b/g,"JLN"],[/\bLORONG\b/g,"LOR"]];
+  function normaliseInput(s){var r=s.toUpperCase().trim();ABBR.forEach(function(pair){r=r.replace(pair[0],pair[1])});return r.replace(/\s+/g," ").trim()}
+
+  // Fetch unique street names on mount - try SQL DISTINCT first, fallback to regular query
   useEffect(function(){
     setStreetsLoading(true);
-    // Fetch a large sample to extract unique streets
-    var url=API_URL+"?resource_id="+DATASET_ID+"&fields=street_name&limit=50000&sort=street_name asc";
-    fetch(url).then(function(r){return r.json()}).then(function(data){
-      if(data.success&&data.result&&data.result.records){
-        var seen={};var list=[];
-        data.result.records.forEach(function(r){
-          if(!seen[r.street_name]){seen[r.street_name]=true;list.push(r.street_name)}
-        });
+    // Try SQL approach for distinct street names
+    var sqlUrl=API_URL+"?resource_id="+DATASET_ID+"&sql=SELECT DISTINCT street_name FROM \""+DATASET_ID+"\" ORDER BY street_name";
+    fetch(sqlUrl).then(function(r){return r.json()}).then(function(data){
+      if(data.success&&data.result&&data.result.records&&data.result.records.length>10){
+        var list=data.result.records.map(function(r){return r.street_name}).filter(Boolean);
         list.sort();
         setStreetList(list);
-      }
-      setStreetsLoading(false);
-    }).catch(function(){setStreetsLoading(false)});
+        setStreetsLoading(false);
+      } else { throw new Error("SQL failed"); }
+    }).catch(function(){
+      // Fallback: fetch recent records and extract unique streets
+      var url=API_URL+"?resource_id="+DATASET_ID+"&fields=street_name&limit=10000&sort=month desc";
+      fetch(url).then(function(r){return r.json()}).then(function(data){
+        if(data.success&&data.result&&data.result.records){
+          var seen={};var list=[];
+          data.result.records.forEach(function(r){
+            if(r.street_name&&!seen[r.street_name]){seen[r.street_name]=true;list.push(r.street_name)}
+          });
+          list.sort();
+          setStreetList(list);
+        }
+        setStreetsLoading(false);
+      }).catch(function(){setStreetsLoading(false)});
+    });
   },[]);
 
   // Close dropdown on outside click
@@ -115,7 +130,14 @@ export default function ValuationChecker(){
 
   function selectStreet(s){setStreetSelected(s);setStreetInput(s);setShowDropdown(false)}
 
-  var handleSearchClick=function(){if(!blockNum||!streetSelected||!flatType)return;if(leadSubmitted){fetchData()}else{setShowModal(true)}};
+  // Resolve the effective street name: selected from dropdown OR manually typed (normalised)
+  function getEffectiveStreet(){
+    if(streetSelected) return streetSelected;
+    if(streetInput.trim().length>=3) return normaliseInput(streetInput);
+    return "";
+  }
+
+  var handleSearchClick=function(){var st=getEffectiveStreet();if(!blockNum||!st||!flatType)return;if(!streetSelected)setStreetSelected(st);if(leadSubmitted){fetchData()}else{setShowModal(true)}};
   var handleLeadSubmit=function(){
     if(!leadName||!leadPhone)return;
     var fullAddr=blockNum.toUpperCase()+" "+streetSelected;
@@ -188,7 +210,7 @@ export default function ValuationChecker(){
     }).catch(function(err){setError("Unable to connect to HDB data. Please try again shortly.");console.error(err);setLoading(false)});
   },[blockNum,streetSelected,flatType,sizeSqm,floor]);
 
-  var canSearch=blockNum.trim().length>0&&streetSelected&&flatType;
+  var canSearch=blockNum.trim().length>0&&(streetSelected||streetInput.trim().length>=3)&&flatType;
   var comparison=(streetResult&&townResult)?Math.round((streetResult.avgPSF-townResult.avgPSF)/townResult.avgPSF*100):null;
   var fullAddr=blockNum.toUpperCase()+" "+streetSelected;
 
@@ -234,7 +256,7 @@ export default function ValuationChecker(){
           <div style={{display:"grid",gap:16}}>
             <div style={{display:"grid",gridTemplateColumns:"120px 1fr",gap:16}}>
               <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Block *</label><input className="fi" placeholder="e.g. 243" value={blockNum} onChange={function(e){setBlockNum(e.target.value)}} style={{textTransform:"uppercase"}}/></div>
-              <div ref={dropdownRef} style={{position:"relative"}}><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Street Name *</label><input className="fi" placeholder={streetsLoading?"Loading streets...":"Start typing street name..."} value={streetInput} onChange={function(e){setStreetInput(e.target.value);setStreetSelected("");setShowDropdown(true)}} onFocus={function(){if(streetInput.length>=2)setShowDropdown(true)}}/>{showDropdown&&filteredStreets.length>0&&(<div className="street-dropdown">{filteredStreets.map(function(s){return <div key={s} className="street-option" onClick={function(){selectStreet(s)}}>{s}</div>})}</div>)}{streetSelected&&<div style={{fontSize:11,color:C.blue,marginTop:4,fontWeight:600}}>&#x2713; {streetSelected}</div>}</div>
+              <div ref={dropdownRef} style={{position:"relative"}}><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Street Name *</label><input className="fi" placeholder={streetsLoading?"Loading streets...":"e.g. BISHAN ST 22 or type to search"} value={streetInput} onChange={function(e){setStreetInput(e.target.value);setStreetSelected("");setShowDropdown(true)}} onFocus={function(){if(streetInput.length>=2)setShowDropdown(true)}}/>{showDropdown&&filteredStreets.length>0&&(<div className="street-dropdown">{filteredStreets.map(function(s){return <div key={s} className="street-option" onClick={function(){selectStreet(s)}}>{s}</div>})}</div>)}{streetSelected?<div style={{fontSize:11,color:C.blue,marginTop:4,fontWeight:600}}>&#x2713; {streetSelected}</div>:streetInput.length>=3&&streetList.length===0?<div style={{fontSize:11,color:C.orange,marginTop:4}}>Autocomplete unavailable &middot; Type your street name (we'll auto-convert: Street&rarr;ST, Avenue&rarr;AVE, etc.)</div>:null}</div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Flat Type *</label><select className="fi" value={flatType} onChange={function(e){setFlatType(e.target.value)}}><option value="">Select type</option>{FLAT_TYPES.map(function(t){return <option key={t} value={t}>{t}</option>})}</select></div><div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Size (sqm)</label><input className="fi" type="number" placeholder="e.g. 101" value={sizeSqm} onChange={function(e){setSizeSqm(e.target.value)}}/>{sizeSqm&&parseFloat(sizeSqm)>0&&<div style={{fontSize:11,color:C.grey500,marginTop:4}}>&asymp; {Math.round(parseFloat(sizeSqm)*10.764)} sqft</div>}</div></div>
             <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Floor Level</label><select className="fi" value={floor} onChange={function(e){setFloor(e.target.value)}}><option value="">Select floor (optional)</option>{FLOOR_LEVELS.map(function(f){return <option key={f.label} value={f.label}>{f.label}</option>})}</select></div>
