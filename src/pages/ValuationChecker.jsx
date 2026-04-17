@@ -29,7 +29,11 @@ function calcStats(records,sizeSqm,floor){
   const fl=FLOOR_LEVELS.find(f=>f.label===floor);const flAdj=fl?fl.adj:0;const flNote=fl?(fl.adj>0?fl.label+" (+"+fl.adj*100+"%)":fl.label):"";
   eLow=Math.round(eLow*(1+flAdj)/1000)*1000;eMid=Math.round(eMid*(1+flAdj)/1000)*1000;eHigh=Math.round(eHigh*(1+flAdj)/1000)*1000;
   const s=records[0];
-  return{eLow,eHigh,eMid,avgPSF,minPSF,maxPSF,avgPrice,medianPrice:Math.round(medianPrice),total:records.length,dateRange:records[records.length-1].month+" to "+records[0].month,town:s.town,lease:s.lease_commence_date,remaining:s.remaining_lease,flNote,flAdj,street:s.street_name}
+  const sizes=records.map(r=>parseFloat(r.floor_area_sqm));
+  const avgSize=Math.round(sizes.reduce((a,b)=>a+b,0)/sizes.length);
+  const minSize=Math.round(Math.min(...sizes));
+  const maxSize=Math.round(Math.max(...sizes));
+  return{eLow,eHigh,eMid,avgPSF,minPSF,maxPSF,avgPrice,medianPrice:Math.round(medianPrice),total:records.length,dateRange:records[records.length-1].month+" to "+records[0].month,town:s.town,lease:s.lease_commence_date,remaining:s.remaining_lease,flNote,flAdj,street:s.street_name,avgSize,minSize,maxSize}
 }
 
 function fmtTxn(r){return{month:r.month,block:r.block,street:r.street_name,storey:r.storey_range,area:r.floor_area_sqm,price:parseFloat(r.resale_price),psf:calcPsf(parseFloat(r.resale_price),parseFloat(r.floor_area_sqm)),remaining:r.remaining_lease,lease:r.lease_commence_date}}
@@ -44,14 +48,14 @@ function TxnTable({txns,title,subtitle,color}){
         {subtitle&&<p style={{fontSize:12,color:C.grey500,marginTop:2}}>{subtitle}</p>}
       </div>
       <div className="tx-row" style={{background:C.grey50,fontWeight:600,color:C.grey500,fontSize:11,textTransform:"uppercase",letterSpacing:.5}}>
-        <span>Month</span><span>Block / Street</span><span>Storey</span><span className="tx-hide">Lease</span><span style={{textAlign:"right"}}>Price</span>
+        <span>Month</span><span>Block / Street</span><span>Storey</span><span className="tx-hide">Size</span><span style={{textAlign:"right"}}>Price</span>
       </div>
       {txns.map((tx,i)=>(
         <div key={i} className="tx-row">
           <span style={{color:C.grey500}}>{tx.month}</span>
           <span style={{fontWeight:600}}>{tx.block} {tx.street}</span>
           <span style={{color:C.grey500}}>{tx.storey}</span>
-          <span className="tx-hide" style={{color:C.grey500}}>{tx.lease}</span>
+          <span className="tx-hide" style={{color:C.grey500}}>{tx.area} sqm</span>
           <span style={{textAlign:"right",fontWeight:700,color:tc}}>{fmt$(tx.price)}<br/><span style={{fontSize:11,fontWeight:500,color:C.grey500}}>${tx.psf} psf</span></span>
         </div>
       ))}
@@ -87,7 +91,7 @@ export default function ValuationChecker(){
           sendToSheet({type:"tool_usage",tool:"Valuation Checker",streetName:fullAddress.toUpperCase(),flatType:flatType,sizeSqm:sizeSqm||"",floorLevel:floor||"",resultShown:"Street:"+matched.length+"txns Lease:"+blockLease,page:"Valuation Checker"});
         }
       }
-      if(townName){
+      if(townName&&sRecords.length<5){
         const q2=JSON.stringify({town:townName,flat_type:flatType});
         const url2=API_URL+"?resource_id="+DATASET_ID+"&q="+encodeURIComponent(q2)+"&sort=month desc&limit=300";
         const resp2=await fetch(url2);const data2=await resp2.json();
@@ -164,7 +168,7 @@ export default function ValuationChecker(){
             <div style={{color:"rgba(255,255,255,0.5)",fontSize:13,marginTop:4}}>{fullAddress.toUpperCase()} &middot; {streetResult.town} &middot; {flatType} &middot; {streetResult.total} transactions</div>
             <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:4}}>Based on: {streetResult.dateRange} &middot; Lease commenced: {streetResult.lease}</div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>{[{label:"Avg PSF",value:"$"+streetResult.avgPSF,sub:"Range: $"+streetResult.minPSF+"\u2013$"+streetResult.maxPSF},{label:"Avg Price",value:fmt$(streetResult.avgPrice),sub:streetResult.total+" transactions"},{label:"Data Period",value:streetResult.dateRange,sub:"Most recent data"},{label:"Lease Start",value:streetResult.lease,sub:"Remaining: "+streetResult.remaining}].map((s,i)=>(<div key={i} style={{background:"#fff",borderRadius:12,padding:18,border:"1px solid "+C.grey200,textAlign:"center"}}><div style={{fontSize:12,color:C.grey500,fontWeight:600,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{s.label}</div><div style={{fontSize:18,fontWeight:700}}>{s.value}</div><div style={{fontSize:11,color:C.grey300,marginTop:2}}>{s.sub}</div></div>))}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:24}}>{[{label:"Avg PSF",value:"$"+streetResult.avgPSF,sub:"Range: $"+streetResult.minPSF+"\u2013$"+streetResult.maxPSF},{label:"Avg Price",value:fmt$(streetResult.avgPrice),sub:streetResult.total+" transactions"},{label:"Avg Size",value:streetResult.avgSize+" sqm",sub:streetResult.minSize+"\u2013"+streetResult.maxSize+" sqm range"},{label:"Data Period",value:streetResult.dateRange,sub:"Lease: "+streetResult.lease+" \u00B7 "+streetResult.remaining}].map((s,i)=>(<div key={i} style={{background:"#fff",borderRadius:12,padding:18,border:"1px solid "+C.grey200,textAlign:"center"}}><div style={{fontSize:12,color:C.grey500,fontWeight:600,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{s.label}</div><div style={{fontSize:18,fontWeight:700}}>{s.value}</div><div style={{fontSize:11,color:C.grey300,marginTop:2}}>{s.sub}</div></div>))}</div>
           {streetResult.flNote&&streetResult.flAdj>0&&<div style={{padding:"12px 16px",background:C.blueLight,borderRadius:10,marginBottom:20,fontSize:13,color:C.blueDark}}>&#x1F4CA; Floor adjustment applied: {streetResult.flNote}</div>}
           <TxnTable txns={streetTxns} title={"\uD83D\uDCCD Your Street: "+streetResult.street} subtitle={streetResult.total+" transactions \u00B7 "+streetResult.dateRange+" \u00B7 Source: HDB via data.gov.sg"} color={C.blue}/>
 
