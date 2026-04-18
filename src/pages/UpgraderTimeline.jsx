@@ -1,480 +1,476 @@
 import { useState, useMemo } from "react";
 import { sendToSheet } from "../sheets";
 
-const C = { blue:"#2B88D8", blueHover:"#2477C0", blueDark:"#1E6AB5", blueLight:"#E8F2FC", bluePale:"#F0F7FF", white:"#FFFFFF", bg:"#F7F8FA", grey50:"#F9FAFB", grey100:"#F3F4F6", grey200:"#E5E7EB", grey300:"#D1D5DB", grey500:"#6B7280", grey600:"#4B5563", grey900:"#111827", orange:"#E67E22", orangeDark:"#C66A15", orangeLight:"#FFF5EB", orangeBorder:"#F5D5A8", red:"#DC2626", redLight:"#FEF2F2", green:"#16A34A", greenLight:"#F0FDF4" };
+const C={blue:"#2B88D8",blueHover:"#2477C0",blueDark:"#1E6AB5",blueLight:"#E8F2FC",bluePale:"#F0F7FF",white:"#FFFFFF",bg:"#F7F8FA",grey50:"#F9FAFB",grey100:"#F3F4F6",grey200:"#E5E7EB",grey300:"#D1D5DB",grey500:"#6B7280",grey600:"#4B5563",grey900:"#111827",orange:"#E67E22",orangeDark:"#C66A15",orangeLight:"#FFF5EB",orangeBorder:"#F5D5A8",red:"#DC2626",redLight:"#FEF2F2",green:"#16A34A",greenLight:"#F0FDF4"};
 
-function addD(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
-function addWD(d,n){const r=new Date(d);let a=0;while(a<n){r.setDate(r.getDate()+1);if(r.getDay()!==0&&r.getDay()!==6)a++}return r}
-function nextWD(d){const r=new Date(d);r.setDate(r.getDate()+1);while(r.getDay()===0||r.getDay()===6)r.setDate(r.getDate()+1);return r}
+function addD(d,n){var r=new Date(d);r.setDate(r.getDate()+n);return r}
+function addWD(d,n){var r=new Date(d);var a=0;while(a<n){r.setDate(r.getDate()+1);if(r.getDay()!==0&&r.getDay()!==6)a++}return r}
+function nextWD(d){var r=new Date(d);r.setDate(r.getDate()+1);while(r.getDay()===0||r.getDay()===6)r.setDate(r.getDate()+1);return r}
 function addW(d,w){return addD(d,w*7)}
 function pad(n){return n<10?"0"+n:n}
-function fmt(d){const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return`${days[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`}
-function fmtS(d){return`${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`}
+function fmt(d){var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];return days[d.getDay()]+", "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()}
+function fmtS(d){return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()}
 function daysBetween(a,b){return Math.round((b-a)/(1000*60*60*24))}
 
+function FishboneTimeline(props){
+  var milestones=props.milestones,searchScope=props.searchScope;
+  if(!milestones||!milestones.length)return null;
+  return(
+    <div style={{position:"relative"}}>
+      <div style={{position:"absolute",left:"50%",top:0,bottom:0,width:2,background:C.grey200,transform:"translateX(-50%)",zIndex:0}}/>
+      {milestones.map(function(m,i){
+        var isHdb=m.track==="hdb";
+        var color=isHdb?C.blue:C.orange;
+        var bgColor=isHdb?C.blueLight:C.orangeLight;
+        var darkColor=isHdb?C.blueDark:C.orangeDark;
+        return(
+          <div key={i} className="fishbone-row" style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 40px 1fr",gap:0,alignItems:"center",marginBottom:12,zIndex:1}}>
+            <div className="col-left" style={{textAlign:"right",paddingRight:12}}>
+              {isHdb&&(<div style={{display:"inline-block",background:bgColor,border:"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:"right",maxWidth:"100%"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginBottom:3}}>
+                  <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
+                  <span style={{fontSize:14}}>{m.icon}</span>
+                </div>
+                <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+                <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
+              </div>)}
+            </div>
+            <div style={{display:"flex",justifyContent:"center",alignItems:"center",position:"relative"}}>
+              <div style={{width:14,height:14,borderRadius:"50%",background:"#fff",border:"2.5px solid "+color,zIndex:2}}/>
+            </div>
+            <div className="col-right" style={{textAlign:"left",paddingLeft:12}}>
+              {!isHdb&&(<div style={{display:"inline-block",background:bgColor,border:"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:"left",maxWidth:"100%"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-start",marginBottom:3}}>
+                  <span style={{fontSize:14}}>{m.icon}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
+                </div>
+                <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+                <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
+              </div>)}
+              <div className="fishbone-hdb-mobile" style={{display:"none"}}>
+                {isHdb&&(<div style={{background:bgColor,border:"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:"left"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                    <span style={{fontSize:14}}>{m.icon}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
+                    <span style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:10,background:"#fff",color:darkColor}}>HDB</span>
+                  </div>
+                  <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+                  <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
+                </div>)}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )
+}
+
 export default function UpgraderTimeline(){
-  const [mode,setMode]=useState("");
-  const [startDate,setStartDate]=useState("");
-  const [safetyMode,setSafetyMode]=useState("after_hdb_exercise"); // "after_hdb_exercise" or "after_hdb_acceptance"
+  // Step 1: Purchase type
+  var [purchaseType,setPurchaseType]=useState(""); // "private_resale" or "new_ec"
+  // Step 2: Strategy
+  var [mode,setMode]=useState(""); // sell_first, buy_first (private) or "ec_bridging", "ec_no_bridging"
+  var [startDate,setStartDate]=useState("");
+  var [safetyMode,setSafetyMode]=useState("after_hdb_exercise");
   // HDB inputs
-  const [hdbSubmission,setHdbSubmission]=useState(30);
-  const [extension,setExtension]=useState(3);
-  // Private inputs
-  const [pvtExercisePeriod,setPvtExercisePeriod]=useState(14);
-  const [pvtExercisePeriodBF,setPvtExercisePeriodBF]=useState(90);
-  const [pvtCompletion,setPvtCompletion]=useState(10);
+  var [hdbSubmission,setHdbSubmission]=useState(30);
+  var [extension,setExtension]=useState(3);
+  // Private Resale inputs
+  var [pvtExercisePeriod,setPvtExercisePeriod]=useState(14);
+  var [pvtExercisePeriodBF,setPvtExercisePeriodBF]=useState(90);
+  var [pvtCompletion,setPvtCompletion]=useState(10);
+  // EC inputs
+  var [ecTopDate,setEcTopDate]=useState("");
+  var [ecBookingDate,setEcBookingDate]=useState("");
+  // Tracking
+  var [tracked,setTracked]=useState(false);
 
-  const timeline=useMemo(()=>{
-    if(!mode||!startDate)return null;
-    let hdbOTP,hdbExercise,pvtOTP,pvtExercise,hdbAcceptance;
-    if(mode==="sell_first"){
-      hdbOTP=new Date(startDate+"T00:00:00");
-      hdbExercise=addD(hdbOTP,21);
-      // Calculate HDB acceptance (need for safety mode)
-      const resaleAppTmp=addD(hdbExercise,hdbSubmission);
-      hdbAcceptance=addWD(resaleAppTmp,28);
-      if(safetyMode==="after_hdb_acceptance"){
-        pvtOTP=addD(hdbAcceptance,1);
-      } else {
-        pvtOTP=addD(hdbExercise,1);
-      }
-      pvtExercise=addD(pvtOTP,pvtExercisePeriod);
-    } else {
-      pvtOTP=new Date(startDate+"T00:00:00");
-      pvtExercise=addD(pvtOTP,pvtExercisePeriodBF);
-      if(safetyMode==="after_hdb_acceptance"){
-        // Work backwards: HDB Acceptance must be before Private Exercise
-        // Acceptance = Exercise + submission + 28WD
-        // So: Exercise = Acceptance - 28WD - submission
-        // Acceptance should be 1 day before Private Exercise
-        hdbAcceptance=addD(pvtExercise,-1);
-        // Work backwards to find HDB Exercise
-        // Approximate: 28 working days ≈ 40 calendar days
-        const hdbExerciseBack=addD(hdbAcceptance,-40-hdbSubmission);
-        hdbExercise=hdbExerciseBack;
-        hdbOTP=addD(hdbExercise,-21);
-      } else {
-        hdbExercise=addD(pvtExercise,-1);
-        hdbOTP=addD(hdbExercise,-21);
-        const resaleAppTmp=addD(hdbExercise,hdbSubmission);
+  // Reset when purchase type changes
+  function selectPurchaseType(t){setPurchaseType(t);setMode("");setStartDate("");setEcTopDate("");setEcBookingDate("");setTracked(false)}
+
+  var timeline=useMemo(function(){
+    // === PRIVATE RESALE MODE ===
+    if(purchaseType==="private_resale"&&mode&&startDate){
+      var hdbOTP,hdbExercise,pvtOTP,pvtExercise,hdbAcceptance;
+      if(mode==="sell_first"){
+        hdbOTP=new Date(startDate+"T00:00:00");
+        hdbExercise=addD(hdbOTP,21);
+        var resaleAppTmp=addD(hdbExercise,hdbSubmission);
         hdbAcceptance=addWD(resaleAppTmp,28);
+        if(safetyMode==="after_hdb_acceptance"){pvtOTP=addD(hdbAcceptance,1)}else{pvtOTP=addD(hdbExercise,1)}
+        pvtExercise=addD(pvtOTP,pvtExercisePeriod);
+      } else {
+        pvtOTP=new Date(startDate+"T00:00:00");
+        pvtExercise=addD(pvtOTP,pvtExercisePeriodBF);
+        if(safetyMode==="after_hdb_acceptance"){
+          hdbAcceptance=addD(pvtExercise,-1);
+          hdbExercise=addD(hdbAcceptance,-40-hdbSubmission);
+          hdbOTP=addD(hdbExercise,-21);
+        } else {
+          hdbExercise=addD(pvtExercise,-1);
+          hdbOTP=addD(hdbExercise,-21);
+        }
       }
-    }
-    const intentToSell=addD(hdbOTP,-7);
-    const requestForValue=nextWD(hdbOTP);
-    const valuationResult=addWD(hdbOTP,5);
-    const resaleApp=addD(hdbExercise,hdbSubmission);
-    // Recalculate acceptance after any adjustments
-    hdbAcceptance=addWD(resaleApp,28);
-    const hdbEndorsement=addW(hdbAcceptance,3);
-    const hdbApproval=addW(hdbEndorsement,2);
-    const hdbCompletionDate=addW(hdbAcceptance,8);
-    const extensionEnd=extension>0?addD(hdbCompletionDate,extension*30):hdbCompletionDate;
-    const pvtCompletionDate=addW(pvtExercise,pvtCompletion);
-    const bsdDue=addD(pvtExercise,14);
+      var intentToSell=addD(hdbOTP,-7);
+      var requestForValue=nextWD(hdbOTP);
+      var valuationResult=addWD(hdbOTP,5);
+      var resaleApp=addD(hdbExercise,hdbSubmission);
+      hdbAcceptance=addWD(resaleApp,28);
+      var hdbEndorsement=addW(hdbAcceptance,3);
+      var hdbApproval=addW(hdbEndorsement,2);
+      var hdbCompletionDate=addW(hdbAcceptance,8);
+      var extensionEnd=extension>0?addD(hdbCompletionDate,extension*30):hdbCompletionDate;
+      var pvtCompletionDate=addW(pvtExercise,pvtCompletion);
+      var bsdDue=addD(pvtExercise,14);
+      var bridgingLoanDays=daysBetween(pvtCompletionDate,hdbCompletionDate);
+      var cpfRefundDate=addWD(hdbCompletionDate,14);
+      var absdSafe=hdbExercise<pvtExercise;
+      var hdbApprovalBeforePvtCompletion=hdbApproval<=pvtCompletionDate;
+      var renoWindowDays=daysBetween(pvtCompletionDate,extensionEnd);
+      var gapExerciseDays=daysBetween(hdbExercise,pvtExercise);
+      var totalDays=daysBetween(intentToSell,extensionEnd);
 
-    const absdSafe=hdbExercise<pvtExercise;
-    const hdbApprovalBeforePvtCompletion=hdbApproval<=pvtCompletionDate;
-    const renoWindowDays=daysBetween(pvtCompletionDate,extensionEnd);
-    const gapExerciseDays=daysBetween(hdbExercise,pvtExercise);
-    const totalDays=daysBetween(intentToSell,extensionEnd);
+      var milestones=[];
+      milestones.push({date:intentToSell,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"\uD83D\uDCCB"});
+      milestones.push({date:hdbOTP,label:mode==="buy_first"?"HDB OTP Granted (Latest by) \u2B50":"HDB OTP Granted",note:"HFE approved before OTP",track:"hdb",icon:"\uD83D\uDCDD",highlight:mode==="buy_first"});
+      milestones.push({date:requestForValue,label:"Request for Value",note:"Next working day after OTP",track:"hdb",icon:"\uD83D\uDCE4"});
+      milestones.push({date:valuationResult,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"\uD83C\uDFE0"});
+      if(mode==="buy_first"){milestones.push({date:pvtOTP,label:"Private OTP Granted",note:"Option fee: 1\u20135% \u00B7 Exercise: "+pvtExercisePeriodBF+" days",track:"pvt",icon:"\uD83D\uDD11"})}
+      milestones.push({date:hdbExercise,label:"HDB Exercise OTP \u2B50",note:"Must be BEFORE Private Exercise",track:"hdb",icon:"\u270F\uFE0F",highlight:true});
+      if(mode==="sell_first"){milestones.push({date:pvtOTP,label:"Private OTP Granted",note:"Option fee: 1% \u00B7 Exercise: "+pvtExercisePeriod+" days",track:"pvt",icon:"\uD83D\uDD11"})}
+      milestones.push({date:pvtExercise,label:"Private Exercise OTP \u2B50",note:"Must be AFTER HDB Exercise \u00B7 Pay 5% less option fee",track:"pvt",icon:"\u270F\uFE0F",highlight:true});
+      milestones.push({date:resaleApp,label:"HDB Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"\uD83D\uDCC4"});
+      milestones.push({date:bsdDue,label:"BSD Payable",note:"3\u20136% \u00B7 Within 14 days of S&P",track:"pvt",icon:"\uD83D\uDCB5"});
+      milestones.push({date:hdbAcceptance,label:"HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"\u2705"});
+      milestones.push({date:hdbEndorsement,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"\u270D\uFE0F"});
+      milestones.push({date:hdbApproval,label:"HDB Approval",note:"Bridging loan can disburse after this",track:"hdb",icon:"\uD83C\uDFDB\uFE0F"});
+      milestones.push({date:pvtCompletionDate,label:"Private Completion \u2B50",note:"Get keys \u00B7 Start renovation",track:"pvt",icon:"\uD83D\uDD11",highlight:true});
+      milestones.push({date:hdbCompletionDate,label:"HDB Completion",note:extension>0?"Extension of Stay begins":"Keys handover",track:"hdb",icon:"\uD83C\uDFE2"});
+      if(extension>0){milestones.push({date:extensionEnd,label:"Extension Ends ("+extension+"m)",note:"Move out of HDB",track:"hdb",icon:"\uD83C\uDFE1"})}
+      milestones.sort(function(a,b){return a.date-b.date});
 
-    // Build unified milestone list
-    const milestones=[
-      {date:intentToSell,label:"Intent to Sell",note:"Register on HDB Portal · 7-day cooling off",track:"hdb",icon:"📋"},
-      {date:hdbOTP,label:mode==="buy_first"?"HDB OTP Granted (Latest by) ⭐":"HDB OTP Granted",note:mode==="buy_first"?"Must grant OTP in time for HDB Exercise before Private Exercise · HFE approved before OTP":"Buyer pays option fee (up to $1,000) · HFE approved before OTP",track:"hdb",icon:"📝",highlight:mode==="buy_first"},
-      {date:requestForValue,label:"Request for Value",note:"Submit by next working day after OTP",track:"hdb",icon:"📤"},
-      {date:valuationResult,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"🏠"},
-    ];
-
-    if(mode==="buy_first"){
-      milestones.push({date:pvtOTP,label:"Private OTP Granted",note:`Option fee: 1–5% · Exercise period: ${pvtExercisePeriodBF} days`,track:"pvt",icon:"🔑",highlight:false});
-    }
-
-    milestones.push({date:hdbExercise,label:"HDB Exercise OTP ⭐",note:"Must be BEFORE Private Exercise · Buyer pays up to $4,000",track:"hdb",icon:"✏️",highlight:true});
-
-    if(mode==="sell_first"){
-      milestones.push({date:pvtOTP,label:"Private OTP Granted",note:`Option fee: 1% · Exercise period: ${pvtExercisePeriod} days`,track:"pvt",icon:"🔑"});
-    }
-
-    milestones.push({date:pvtExercise,label:"Private Exercise OTP ⭐",note:"Must be AFTER HDB Exercise · Pay 5% less option fee",track:"pvt",icon:"✏️",highlight:true});
-    milestones.push({date:resaleApp,label:"HDB Resale Application",note:`${hdbSubmission}-day agreed period · $80 per party`,track:"hdb",icon:"📄"});
-    milestones.push({date:bsdDue,label:"BSD Payable",note:"3% to 6% · Within 14 days of S&P · Legal fees",track:"pvt",icon:"💵"});
-    milestones.push({date:hdbAcceptance,label:"HDB Acceptance",note:"Within 28 working days · 8-week clock starts",track:"hdb",icon:"✅"});
-    milestones.push({date:hdbEndorsement,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"✍️"});
-    milestones.push({date:hdbApproval,label:"HDB Approval",note:"~2 weeks after endorsement · Bridging loan can disburse after this",track:"hdb",icon:"🏛️"});
-    milestones.push({date:pvtCompletionDate,label:"Private Completion ⭐",note:"Get keys to private property · Start renovation",track:"pvt",icon:"🔑",highlight:true});
-    milestones.push({date:hdbCompletionDate,label:"HDB Completion",note:extension>0?"Physical appt at HDB · Extension of Stay begins":"Physical appt at HDB · Keys handover",track:"hdb",icon:"🏢"});
-
-    if(extension>0){
-      milestones.push({date:extensionEnd,label:`Extension Ends (${extension}m)`,note:"Move out of HDB · Move into renovated private",track:"hdb",icon:"🏡"});
+      return{type:"private_resale",milestones:milestones,mode:mode,absdSafe:absdSafe,hdbApprovalBeforePvtCompletion:hdbApprovalBeforePvtCompletion,renoWindowDays:renoWindowDays,gapExerciseDays:gapExerciseDays,totalDays:totalDays,hdbExercise:hdbExercise,pvtExercise:pvtExercise,hdbApproval:hdbApproval,pvtCompletionDate:pvtCompletionDate,extensionEnd:extensionEnd,extensionMonths:extension,pvtCompletionS:pvtCompletionDate,hdbCompletionS:hdbCompletionDate,bridgingLoanDays:bridgingLoanDays,cpfRefundDate:cpfRefundDate,cpfRefundDays:daysBetween(pvtCompletionDate,cpfRefundDate)};
     }
 
-    // Sort by date
-    milestones.sort((a,b)=>a.date-b.date);
+    // === NEW EC MODE ===
+    if(purchaseType==="new_ec"&&mode&&ecTopDate){
+      var ecTOP=new Date(ecTopDate+"T00:00:00");
+      var sixMonthDeadline=addD(ecTOP,180);
+      var ecBooking=ecBookingDate?new Date(ecBookingDate+"T00:00:00"):null;
+      var ecExercise=ecBooking?addD(ecBooking,21):null;
+      var ecBSD=ecExercise?addD(ecExercise,14):null;
+      var ec2ndPayment=ecBooking?addD(ecBooking,56):null; // 8 weeks
 
-    const bridgingLoanDays=daysBetween(pvtCompletionDate,hdbCompletionDate);
-    const cpfRefundDate=addWD(hdbCompletionDate,14);
-    const cpfRefundDays=daysBetween(pvtCompletionDate,cpfRefundDate);
+      // Calculate HDB timeline working backwards from deadline
+      var latestHdbCompletion,hdbApprovalDeadline;
+      if(mode==="ec_bridging"){
+        // HDB Approval must be before EC TOP
+        hdbApprovalDeadline=addD(ecTOP,-14); // 14 day buffer
+      }
+      // Hard deadline: HDB must complete before TOP + 6 months
+      latestHdbCompletion=sixMonthDeadline;
 
-    return {
-      milestones,mode,absdSafe,hdbApprovalBeforePvtCompletion,renoWindowDays,gapExerciseDays,totalDays,
-      hdbExercise,pvtExercise,hdbApproval,pvtCompletionDate,extensionEnd,extensionMonths:extension,
-      pvtCompletionS:pvtCompletionDate,hdbCompletionS:hdbCompletionDate,
-      bridgingLoanDays,cpfRefundDate,cpfRefundDays
-    };
-  },[mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion]);
+      // Work backwards from the binding constraint
+      var targetDate=mode==="ec_bridging"?hdbApprovalDeadline:latestHdbCompletion;
 
-  const t=timeline;
-  const [tracked,setTracked]=useState(false);
-  if(t&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Upgrader Timeline",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:`${mode} Safety:${safetyMode} HDBSub:${hdbSubmission}d Ext:${extension}m PvtComp:${pvtCompletion}w`,page:"Upgrader Timeline"})}
+      // For bridging: approval must be by targetDate
+      // approval = endorsement + 2w, endorsement = acceptance + 3w, acceptance = resaleApp + 28wd
+      // completion = acceptance + 8w
+      // So: acceptance = targetDate - 5w (for endorsement+approval) if bridging
+      //     acceptance = targetDate - 8w if no bridging (completion = acceptance + 8w)
+
+      var latestHdbAcceptance,latestResaleApp,latestHdbExercise,latestHdbOTP,latestIntentToSell;
+      if(mode==="ec_bridging"){
+        // HDB Approval = Acceptance + 3w + 2w = Acceptance + 5w
+        latestHdbAcceptance=addD(targetDate,-35); // 5 weeks before approval deadline
+      } else {
+        // HDB Completion = Acceptance + 8w
+        latestHdbAcceptance=addD(targetDate,-56); // 8 weeks before completion deadline
+      }
+      // Acceptance = ResaleApp + ~40 calendar days (28 working days)
+      latestResaleApp=addD(latestHdbAcceptance,-40);
+      latestHdbExercise=addD(latestResaleApp,-hdbSubmission);
+      latestHdbOTP=addD(latestHdbExercise,-21);
+      latestIntentToSell=addD(latestHdbOTP,-7);
+
+      // If user provided a start date (manual override), use that instead
+      var hdbOTP2,hdbExercise2;
+      if(startDate){
+        hdbOTP2=new Date(startDate+"T00:00:00");
+      } else {
+        hdbOTP2=latestHdbOTP;
+      }
+      hdbExercise2=addD(hdbOTP2,21);
+      var intentToSell2=addD(hdbOTP2,-7);
+      var requestForValue2=nextWD(hdbOTP2);
+      var valuationResult2=addWD(hdbOTP2,5);
+      var resaleApp2=addD(hdbExercise2,hdbSubmission);
+      var hdbAcceptance2=addWD(resaleApp2,28);
+      var hdbEndorsement2=addW(hdbAcceptance2,3);
+      var hdbApproval2=addW(hdbEndorsement2,2);
+      var hdbCompletionDate2=addW(hdbAcceptance2,8);
+      var extensionEnd2=extension>0?addD(hdbCompletionDate2,extension*30):hdbCompletionDate2;
+      var cpfRefundDate2=addWD(hdbCompletionDate2,14);
+      var bridgingLoanDays2=daysBetween(ecTOP,hdbCompletionDate2);
+      var renoWindowDays2=daysBetween(ecTOP,extensionEnd2);
+      var totalDays2=daysBetween(intentToSell2,extensionEnd2);
+
+      // Checks
+      var hdbApprovalOK=hdbApproval2<=ecTOP;
+      var hdbCompletionBeforeDeadline=hdbCompletionDate2<=sixMonthDeadline;
+      var daysToDeadline=daysBetween(hdbCompletionDate2,sixMonthDeadline);
+
+      // Build milestones
+      var ms=[];
+      // EC milestones
+      if(ecBooking){
+        ms.push({date:ecBooking,label:"EC Booking",note:"Pay 5% booking fee \u00B7 Cash/CPF on hand",track:"pvt",icon:"\uD83C\uDFE0"});
+        ms.push({date:ecExercise,label:"EC Exercise OTP",note:"Sign S&P within 21 days",track:"pvt",icon:"\u270F\uFE0F"});
+        ms.push({date:ecBSD,label:"EC BSD Payable",note:"3\u20136% \u00B7 No ABSD (indemnity signed)",track:"pvt",icon:"\uD83D\uDCB5"});
+        ms.push({date:ec2ndPayment,label:"EC 2nd Payment (15%)",note:"8 weeks after booking \u00B7 Total 20% \u00B7 Must have cash/CPF",track:"pvt",icon:"\uD83D\uDCB0",highlight:true});
+      }
+      ms.push({date:ecTOP,label:"EC TOP \u2B50",note:"Get keys \u00B7 Mortgage starts \u00B7 Start renovation",track:"pvt",icon:"\uD83D\uDD11",highlight:true});
+      ms.push({date:sixMonthDeadline,label:"6-Month Deadline \u2B50",note:"Must sell HDB by this date",track:"pvt",icon:"\u26A0\uFE0F",highlight:true});
+
+      // HDB milestones
+      ms.push({date:intentToSell2,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"\uD83D\uDCCB"});
+      ms.push({date:hdbOTP2,label:"HDB OTP Granted \u2B50",note:startDate?"Your chosen date":"Latest recommended date",track:"hdb",icon:"\uD83D\uDCDD",highlight:true});
+      ms.push({date:requestForValue2,label:"Request for Value",note:"Next working day after OTP",track:"hdb",icon:"\uD83D\uDCE4"});
+      ms.push({date:valuationResult2,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"\uD83C\uDFE0"});
+      ms.push({date:hdbExercise2,label:"HDB Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"\u270F\uFE0F"});
+      ms.push({date:resaleApp2,label:"HDB Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"\uD83D\uDCC4"});
+      ms.push({date:hdbAcceptance2,label:"HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"\u2705"});
+      ms.push({date:hdbEndorsement2,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"\u270D\uFE0F"});
+      ms.push({date:hdbApproval2,label:"HDB Approval",note:mode==="ec_bridging"?"Must be before EC TOP for bridging loan":"~2 weeks after endorsement",track:"hdb",icon:"\uD83C\uDFDB\uFE0F",highlight:mode==="ec_bridging"});
+      ms.push({date:hdbCompletionDate2,label:"HDB Completion",note:extension>0?"Extension of Stay begins":"Keys handover \u00B7 Sale proceeds released",track:"hdb",icon:"\uD83C\uDFE2"});
+      if(extension>0){ms.push({date:extensionEnd2,label:"Extension Ends ("+extension+"m)",note:"Move out of HDB \u00B7 Move into EC",track:"hdb",icon:"\uD83C\uDFE1"})}
+
+      ms.sort(function(a,b){return a.date-b.date});
+
+      return{type:"new_ec",milestones:ms,mode:mode,hdbApprovalOK:hdbApprovalOK,hdbCompletionBeforeDeadline:hdbCompletionBeforeDeadline,daysToDeadline:daysToDeadline,renoWindowDays:renoWindowDays2,totalDays:totalDays2,hdbApproval:hdbApproval2,hdbCompletionS:hdbCompletionDate2,ecTOP:ecTOP,sixMonthDeadline:sixMonthDeadline,extensionEnd:extensionEnd2,extensionMonths:extension,bridgingLoanDays:bridgingLoanDays2>0?bridgingLoanDays2:0,cpfRefundDate:cpfRefundDate2,cpfRefundDays:daysBetween(ecTOP,cpfRefundDate2),latestHdbOTP:latestHdbOTP,latestIntentToSell:latestIntentToSell};
+    }
+
+    return null;
+  },[purchaseType,mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion,ecTopDate,ecBookingDate]);
+
+  var t=timeline;
+  if(t&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Upgrader Timeline",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:purchaseType+" "+mode,page:"Upgrader Timeline"})}
 
   return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',sans-serif",color:C.grey900}}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet"/>
-      <style>{`
-        *{margin:0;padding:0;box-sizing:border-box}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        .fade-up{animation:fadeUp .6s ease-out both}
-        .fi{width:100%;padding:12px 14px;border:1.5px solid ${C.grey200};border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:#fff;outline:none;color:${C.grey900};transition:border-color .2s,box-shadow .2s}
-        .fi:focus{border-color:${C.blue};box-shadow:0 0 0 3px rgba(43,136,216,.12)}
-        select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
-        .nav-link{color:${C.grey500};text-decoration:none;font-size:14px;font-weight:500;padding:8px 14px;border-radius:6px;transition:color .2s,background .2s}
-        .nav-link:hover{color:${C.blue};background:${C.grey100}}
-        .nav-active{color:${C.blue};font-weight:600}
-        .mode-btn{padding:16px 24px;border-radius:12px;border:2px solid ${C.grey200};background:#fff;cursor:pointer;transition:all .2s;text-align:left;font-family:'DM Sans',sans-serif;width:100%}
-        .mode-btn:hover{border-color:${C.blue};background:${C.bluePale}}
-        .mode-btn.active{border-color:${C.blue};background:${C.blueLight}}
-        .alert-box{padding:14px 18px;border-radius:10px;margin-bottom:12px;font-size:13px;line-height:1.6}
-        @media (max-width: 640px) {
-          .fishbone-row { grid-template-columns: 24px 1fr !important; }
-          .fishbone-row .col-left { display: none; }
-          .fishbone-row .col-right { padding-left: 12px !important; }
-          .fishbone-row .col-right > div { display: block !important; text-align: left !important; }
-          .fishbone-hdb-mobile { display: block !important; }
-          .fishbone-center-line { left: 12px !important; transform: none !important; }
-        }
-        .section-card{background:#fff;border-radius:14px;border:1px solid ${C.grey200};padding:22px;margin-bottom:16px}
-        .section-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
-      `}</style>
+      <style>{"\
+        *{margin:0;padding:0;box-sizing:border-box}\
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}\
+        .fade-up{animation:fadeUp .6s ease-out both}\
+        .fi{width:100%;padding:12px 14px;border:1.5px solid "+C.grey200+";border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:#fff;outline:none;color:"+C.grey900+";transition:border-color .2s,box-shadow .2s}\
+        .fi:focus{border-color:"+C.blue+";box-shadow:0 0 0 3px rgba(43,136,216,.12)}\
+        select.fi{appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 14px center}\
+        .nav-link{color:"+C.grey500+";text-decoration:none;font-size:14px;font-weight:500;padding:8px 14px;border-radius:6px;transition:color .2s,background .2s}\
+        .nav-link:hover{color:"+C.blue+";background:"+C.grey100+"}\
+        .nav-active{color:"+C.blue+";font-weight:600}\
+        .mode-btn{padding:16px 20px;border-radius:12px;border:2px solid "+C.grey200+";background:#fff;cursor:pointer;transition:all .2s;text-align:left;font-family:'DM Sans',sans-serif;width:100%}\
+        .mode-btn:hover{border-color:"+C.blue+";background:"+C.bluePale+"}\
+        .mode-btn.active{border-color:"+C.blue+";background:"+C.blueLight+"}\
+        .alert-box{padding:14px 18px;border-radius:10px;margin-bottom:12px;font-size:13px;line-height:1.6}\
+        .section-card{background:#fff;border-radius:14px;border:1px solid "+C.grey200+";padding:22px;margin-bottom:16px}\
+        .section-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}\
+        @media(max-width:640px){.fishbone-row{grid-template-columns:24px 1fr !important}.col-left{display:none}.col-right{padding-left:12px !important}.fishbone-hdb-mobile{display:block !important}}\
+      "}</style>
 
       {/* Nav */}
-      <div style={{background:C.white,padding:"0 20px",position:"sticky",top:0,zIndex:100,borderBottom:`1px solid ${C.grey200}`}}>
-        <div style={{maxWidth:900,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
-          <a href="/" style={{color:C.grey900,fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,textDecoration:"none"}}>Avenue 88</a>
-          <div style={{display:"flex",gap:4}}>
-            <a href="/" className="nav-link">Home</a>
-            <a href="/timeline" className="nav-link">Timeline</a>
-            <a href="/valuation" className="nav-link">Valuation</a>
-            <a href="/upgrader" className="nav-link nav-active">Upgrader</a>
-          </div>
-        </div>
-      </div>
+      <div style={{background:C.white,padding:"0 20px",position:"sticky",top:0,zIndex:100,borderBottom:"1px solid "+C.grey200}}><div style={{maxWidth:900,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}><a href="/" style={{color:C.grey900,fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,textDecoration:"none"}}>Avenue 88</a><div style={{display:"flex",gap:4}}><a href="/" className="nav-link">Home</a><a href="/timeline" className="nav-link">Timeline</a><a href="/valuation" className="nav-link">Valuation</a><a href="/upgrader" className="nav-link nav-active">Upgrader</a><a href="/" className="nav-link">Contact</a></div></div></div>
 
       {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${C.blue},${C.blueDark})`,padding:"48px 20px 40px"}}>
-        <div style={{maxWidth:720,margin:"0 auto"}}>
-          <span style={{color:"rgba(255,255,255,0.8)",fontSize:12,fontWeight:600,letterSpacing:2,textTransform:"uppercase"}}>Avenue 88 · Advanced Tool</span>
-          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(26px,5vw,40px)",color:"#fff",lineHeight:1.2,marginTop:8,fontWeight:700}}>HDB Upgrader Timeline</h1>
-          <p style={{color:"rgba(255,255,255,0.85)",fontSize:16,marginTop:12}}>Plan your HDB sale and private purchase — timed to avoid ABSD.</p>
-        </div>
-      </div>
+      <div style={{background:"linear-gradient(135deg,"+C.blue+","+C.blueDark+")",padding:"48px 20px 40px"}}><div style={{maxWidth:720,margin:"0 auto"}}><span style={{color:"rgba(255,255,255,0.8)",fontSize:12,fontWeight:600,letterSpacing:2,textTransform:"uppercase"}}>Avenue 88 &middot; Advanced Tool</span><h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(26px,5vw,40px)",color:"#fff",lineHeight:1.2,marginTop:8,fontWeight:700}}>HDB Upgrader Timeline</h1><p style={{color:"rgba(255,255,255,0.85)",fontSize:16,marginTop:12}}>Plan your HDB sale and next property purchase.</p></div></div>
 
       <div style={{maxWidth:720,margin:"0 auto",padding:"36px 20px"}}>
 
-        {/* Step 1: Mode */}
-        <div style={{background:"#fff",borderRadius:16,border:`1px solid ${C.grey200}`,padding:28,boxShadow:"0 2px 12px rgba(0,0,0,0.03)",marginBottom:20}}>
-          <h3 style={{fontSize:17,fontWeight:700,marginBottom:6}}>Step 1: Choose Your Strategy</h3>
-          <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Both strategies avoid ABSD by ensuring HDB is exercised before Private.</p>
+        {/* Step 1: Purchase Type */}
+        <div className="section-card" style={{padding:28}}>
+          <h3 style={{fontSize:17,fontWeight:700,marginBottom:6}}>Step 1: What are you buying?</h3>
+          <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Select your next property type to see the relevant timeline.</p>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-            <button className={`mode-btn ${mode==="sell_first"?"active":""}`} onClick={()=>setMode("sell_first")}>
-              <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="sell_first"?C.blue:C.grey900}}>Sell HDB First</div>
-              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Secure HDB buyer first, then find private. Lower risk, tighter timeline.</div>
+            <button className={"mode-btn "+(purchaseType==="private_resale"?"active":"")} onClick={function(){selectPurchaseType("private_resale")}}>
+              <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:purchaseType==="private_resale"?C.blue:C.grey900}}>Private Resale</div>
+              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy an existing private condo or apartment on the resale market.</div>
             </button>
-            <button className={`mode-btn ${mode==="buy_first"?"active":""}`} onClick={()=>setMode("buy_first")}>
-              <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="buy_first"?C.blue:C.grey900}}>Buy Private First</div>
-              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Secure private first with longer option period. More flexibility, higher option fee.</div>
+            <button className={"mode-btn "+(purchaseType==="new_ec"?"active":"")} onClick={function(){selectPurchaseType("new_ec")}}>
+              <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:purchaseType==="new_ec"?C.blue:C.grey900}}>New EC</div>
+              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy a new Executive Condominium from developer. No ABSD. Deferred payment available.</div>
             </button>
           </div>
         </div>
 
-        {/* Step 2: Inputs — Separated */}
-        {mode&&(
+        {/* Step 2: Strategy — varies by purchase type */}
+        {purchaseType==="private_resale"&&(
+          <div className="fade-up section-card" style={{padding:28}}>
+            <h3 style={{fontSize:17,fontWeight:700,marginBottom:6}}>Step 2: Choose Your Strategy</h3>
+            <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Both strategies avoid ABSD by ensuring HDB is exercised before Private.</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <button className={"mode-btn "+(mode==="sell_first"?"active":"")} onClick={function(){setMode("sell_first")}}>
+                <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="sell_first"?C.blue:C.grey900}}>Sell HDB First</div>
+                <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Secure HDB buyer first, then find private. Lower risk.</div>
+              </button>
+              <button className={"mode-btn "+(mode==="buy_first"?"active":"")} onClick={function(){setMode("buy_first")}}>
+                <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="buy_first"?C.blue:C.grey900}}>Buy Private First</div>
+                <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Secure private first with longer option period. Higher option fee.</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {purchaseType==="new_ec"&&(
+          <div className="fade-up section-card" style={{padding:28}}>
+            <h3 style={{fontSize:17,fontWeight:700,marginBottom:6}}>Step 2: Bridging Loan?</h3>
+            <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Do you need a bridging loan to fund the EC purchase at TOP?</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <button className={"mode-btn "+(mode==="ec_bridging"?"active":"")} onClick={function(){setMode("ec_bridging")}}>
+                <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="ec_bridging"?C.blue:C.grey900}}>Yes, Bridging Loan</div>
+                <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>HDB Approval must be before EC TOP. Tighter timeline.</div>
+              </button>
+              <button className={"mode-btn "+(mode==="ec_no_bridging"?"active":"")} onClick={function(){setMode("ec_no_bridging")}}>
+                <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="ec_no_bridging"?C.blue:C.grey900}}>No Bridging Loan</div>
+                <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>More flexibility. Sell HDB within 6 months of TOP.</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Inputs */}
+        {purchaseType==="private_resale"&&mode&&(
           <div className="fade-up">
-            {/* Starting Point */}
-            <div className="section-card">
-              <div className="section-label" style={{color:C.grey500}}>Starting Point</div>
+            <div className="section-card"><div className="section-label" style={{color:C.grey500}}>Starting Point</div>
               <div style={{display:"grid",gap:16}}>
-                <div>
-                  <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>
-                    {mode==="sell_first"?"HDB OTP Grant Date *":"Private OTP Grant Date *"}
-                  </label>
-                  <input className="fi" type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{maxWidth:280}}/>
-                  {startDate&&<div style={{fontSize:12,color:C.blue,marginTop:6,fontWeight:600}}>Selected: {fmtS(new Date(startDate+"T00:00:00"))} (DD/MM/YYYY)</div>}
-                </div>
-                <div>
-                  <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:8,display:"block"}}>Private Purchase Exercise Timing</label>
+                <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>{mode==="sell_first"?"HDB OTP Grant Date *":"Private OTP Grant Date *"}</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}} style={{maxWidth:280}}/>{startDate&&<div style={{fontSize:12,color:C.blue,marginTop:6,fontWeight:600}}>Selected: {fmtS(new Date(startDate+"T00:00:00"))}</div>}</div>
+                <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:8,display:"block"}}>Private Exercise Timing</label>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    <button type="button" onClick={()=>setSafetyMode("after_hdb_exercise")} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${safetyMode==="after_hdb_exercise"?C.blue:C.grey200}`,background:safetyMode==="after_hdb_exercise"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>
-                      <div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_exercise"?C.blue:C.grey900,marginBottom:2}}>After HDB Exercise</div>
-                      <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Standard · Faster timeline</div>
-                    </button>
-                    <button type="button" onClick={()=>setSafetyMode("after_hdb_acceptance")} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${safetyMode==="after_hdb_acceptance"?C.blue:C.grey200}`,background:safetyMode==="after_hdb_acceptance"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>
-                      <div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_acceptance"?C.blue:C.grey900,marginBottom:2}}>After HDB Acceptance</div>
-                      <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Extra safe · Wait for HDB confirmation</div>
-                    </button>
-                  </div>
-                  <div style={{fontSize:11,color:C.grey500,marginTop:8,lineHeight:1.5}}>
-                    {safetyMode==="after_hdb_acceptance"?"💡 Waiting for HDB Acceptance ensures the sale is officially accepted before committing to the private purchase. Safer but adds ~30 days to the timeline.":"💡 Exercise private right after HDB exercise — quickest timeline. Some risk if HDB rejects the application (rare)."}
+                    <button type="button" onClick={function(){setSafetyMode("after_hdb_exercise")}} style={{padding:"12px 14px",borderRadius:10,border:"2px solid "+(safetyMode==="after_hdb_exercise"?C.blue:C.grey200),background:safetyMode==="after_hdb_exercise"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}><div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_exercise"?C.blue:C.grey900}}>After HDB Exercise</div><div style={{fontSize:11,color:C.grey500}}>Standard \u00B7 Faster</div></button>
+                    <button type="button" onClick={function(){setSafetyMode("after_hdb_acceptance")}} style={{padding:"12px 14px",borderRadius:10,border:"2px solid "+(safetyMode==="after_hdb_acceptance"?C.blue:C.grey200),background:safetyMode==="after_hdb_acceptance"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}><div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_acceptance"?C.blue:C.grey900}}>After HDB Acceptance</div><div style={{fontSize:11,color:C.grey500}}>Extra safe</div></button>
                   </div>
                 </div>
               </div>
             </div>
-
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
-              {/* HDB Details */}
-              <div className="section-card" style={{borderLeft:`3px solid ${C.blue}`}}>
-                <div className="section-label" style={{color:C.blue}}>🏢 HDB Sale Details</div>
-                <div style={{display:"grid",gap:14}}>
-                  <div>
-                    <label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label>
-                    <select className="fi" value={hdbSubmission} onChange={e=>setHdbSubmission(Number(e.target.value))}>
-                      {[7,14,21,30,45,60,80].map(d=><option key={d} value={d}>{d} days{d===80?" (max)":""}</option>)}
-                    </select>
-                    <div style={{fontSize:11,color:mode==="buy_first"?C.green:"#92600A",marginTop:4,fontWeight:500}}>
-                      {mode==="buy_first"?"💡 Tip: Shorter is better — speeds up HDB completion":"💡 Tip: Longer gives more time to find your private property"}
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label>
-                    <select className="fi" value={extension} onChange={e=>setExtension(Number(e.target.value))}>
-                      <option value={0}>No extension</option>
-                      <option value={1}>1 month</option>
-                      <option value={2}>2 months</option>
-                      <option value={3}>3 months (max)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Private Details */}
-              <div className="section-card" style={{borderLeft:`3px solid ${C.orange}`}}>
-                <div className="section-label" style={{color:C.orange}}>🏡 Private Purchase Details</div>
-                <div style={{display:"grid",gap:14}}>
-                  <div>
-                    <label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Exercise Period</label>
-                    {mode==="sell_first"?(
-                      <select className="fi" value={pvtExercisePeriod} onChange={e=>setPvtExercisePeriod(Number(e.target.value))}>
-                        <option value={14}>14 days (standard)</option>
-                        <option value={21}>21 days</option>
-                        <option value={30}>30 days</option>
-                        <option value={60}>60 days</option>
-                      </select>
-                    ):(
-                      <select className="fi" value={pvtExercisePeriodBF} onChange={e=>setPvtExercisePeriodBF(Number(e.target.value))}>
-                        <option value={60}>2 months</option>
-                        <option value={90}>3 months</option>
-                        <option value={120}>4 months</option>
-                        <option value={150}>5 months</option>
-                        <option value={180}>6 months</option>
-                      </select>
-                    )}
-                    {mode==="buy_first"&&(
-                      <div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>
-                        💡 Tip: Longer is better — gives more time to sell HDB before exercising
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Completion Period</label>
-                    <select className="fi" value={pvtCompletion} onChange={e=>setPvtCompletion(Number(e.target.value))}>
-                      {[8,10,12,14,16].map(w=><option key={w} value={w}>{w} weeks</option>)}
-                    </select>
-                  </div>
-                </div>
-                {mode==="buy_first"&&(
-                  <div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A",lineHeight:1.4}}>
-                    ⚠️ Longer exercise period requires higher option fee (1–5%).
-                  </div>
-                )}
-              </div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>\uD83C\uDFE2 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:mode==="buy_first"?C.green:"#92600A",marginTop:4,fontWeight:500}}>{mode==="buy_first"?"\uD83D\uDCA1 Tip: Shorter is better":"\uD83D\uDCA1 Tip: Longer gives more time to find private"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>\uD83C\uDFE1 Private Purchase Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Exercise Period</label>{mode==="sell_first"?<select className="fi" value={pvtExercisePeriod} onChange={function(e){setPvtExercisePeriod(Number(e.target.value))}}><option value={14}>14 days (standard)</option><option value={21}>21 days</option><option value={30}>30 days</option><option value={60}>60 days</option></select>:<select className="fi" value={pvtExercisePeriodBF} onChange={function(e){setPvtExercisePeriodBF(Number(e.target.value))}}><option value={60}>2 months</option><option value={90}>3 months</option><option value={120}>4 months</option><option value={150}>5 months</option><option value={180}>6 months</option></select>}{mode==="buy_first"&&<div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"\uD83D\uDCA1 Tip: Longer is better"}</div>}</div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Completion Period</label><select className="fi" value={pvtCompletion} onChange={function(e){setPvtCompletion(Number(e.target.value))}}>{[8,10,12,14,16].map(function(w){return <option key={w} value={w}>{w} weeks</option>})}</select></div></div>{mode==="buy_first"&&<div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>{"\u26A0\uFE0F Longer exercise period requires higher option fee (1\u20135%)."}</div>}</div>
             </div>
+          </div>
+        )}
+
+        {purchaseType==="new_ec"&&mode&&(
+          <div className="fade-up">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>\uD83C\uDFE0 EC Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>EC Booking Date</label><input className="fi" type="date" value={ecBookingDate} onChange={function(e){setEcBookingDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional \u00B7 Leave blank if not yet booked</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Expected EC TOP Date *</label><input className="fi" type="date" value={ecTopDate} onChange={function(e){setEcTopDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Provided by developer \u00B7 Typically 3\u20135 years from launch</div></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>\uD83C\uDFE2 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>HDB OTP Date (override)</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional \u00B7 Leave blank to auto-calculate latest date</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"\uD83D\uDCA1 Tip: Shorter is better \u2014 speeds up HDB completion"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
+            </div>
+            <div className="alert-box" style={{background:C.orangeLight,border:"1px solid "+C.orangeBorder,color:"#92600A",marginBottom:24}}>{"\u26A0\uFE0F"} <strong>Important:</strong> EC booking fee (5%) + 2nd payment at 8 weeks (15%) + BSD must come from existing cash/CPF. HDB sale proceeds are not available at this stage.</div>
           </div>
         )}
 
         {/* Results */}
-        {t&&(
-          <div className="fade-up">
-            {/* Summary */}
-            <div style={{background:`linear-gradient(135deg,${C.blue},${C.blueDark})`,borderRadius:14,padding:"22px 28px",marginBottom:20}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
-                <div>
-                  <div style={{color:"rgba(255,255,255,0.7)",fontSize:12,fontWeight:600}}>Total Timeline</div>
-                  <div style={{color:"#fff",fontSize:24,fontWeight:800,fontFamily:"'Playfair Display',serif"}}>{t.totalDays} days (~{(t.totalDays/30).toFixed(1)} months)</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{color:"rgba(255,255,255,0.7)",fontSize:12,fontWeight:600}}>Renovation Window</div>
-                  <div style={{color:"#fff",fontSize:20,fontWeight:700}}>{t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)</div>
-                </div>
-              </div>
-              <div style={{marginTop:10,display:"flex",gap:16,flexWrap:"wrap"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blueLight}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>HDB Sale</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>Private Purchase</span></div>
-                <span style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>· {mode==="sell_first"?"Sell First":"Buy First"} · {t.extensionMonths>0?`${t.extensionMonths}m extension`:"No extension"}</span>
-              </div>
+        {t&&(<div className="fade-up">
+          {/* Summary Banner */}
+          <div style={{background:"linear-gradient(135deg,"+C.blue+","+C.blueDark+")",borderRadius:14,padding:"22px 28px",marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
+              <div><div style={{color:"rgba(255,255,255,0.7)",fontSize:12,fontWeight:600}}>Total Timeline</div><div style={{color:"#fff",fontSize:24,fontWeight:800,fontFamily:"'Playfair Display',serif"}}>{t.totalDays} days (~{(t.totalDays/30).toFixed(1)} months)</div></div>
+              <div style={{textAlign:"right"}}><div style={{color:"rgba(255,255,255,0.7)",fontSize:12,fontWeight:600}}>Renovation Window</div><div style={{color:"#fff",fontSize:20,fontWeight:700}}>{t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)</div></div>
             </div>
-
-            {/* Alerts */}
-            {!t.absdSafe&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>🚨 <strong>ABSD Risk!</strong> Private Exercise ({fmtS(t.pvtExercise)}) is on or before HDB Exercise ({fmtS(t.hdbExercise)}). 20% ABSD will apply. Adjust your timeline.</div>}
-            {t.absdSafe&&<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>✅ <strong>No ABSD</strong> — HDB Exercise ({fmtS(t.hdbExercise)}) is {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} before Private Exercise ({fmtS(t.pvtExercise)}).</div>}
-            {!t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>🚨 <strong>Bridging Loan Risk!</strong> HDB Approval ({fmtS(t.hdbApproval)}) is after Private Completion ({fmtS(t.pvtCompletionDate)}). Bridging loan cannot disburse in time. Extend private completion or shorten HDB submission period.</div>}
-            {t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.blueLight,border:`1px solid ${C.blue}33`,color:C.blueDark}}>💰 <strong>Bridging Loan OK</strong> — HDB Approval ({fmtS(t.hdbApproval)}) is before Private Completion ({fmtS(t.pvtCompletionDate)}). Apply bridging loan together with mortgage loan.</div>}
-            {t.gapExerciseDays>0&&t.gapExerciseDays<7&&t.absdSafe&&<div className="alert-box" style={{background:C.orangeLight,border:`1px solid ${C.orangeBorder}`,color:"#92600A"}}>⚠️ <strong>Tight Timeline:</strong> Only {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} gap between exercise dates. Consider more buffer.</div>}
-
-            {/* Unified Fishbone Timeline - HDB Left | Center Line | Private Right */}
-            <div style={{background:"#fff",borderRadius:16,border:`1px solid ${C.grey200}`,padding:"24px 20px",marginBottom:24}}>
-              <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Combined Timeline</h3>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:14,borderBottom:`1px solid ${C.grey100}`}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>🏢 Sell HDB</span></div>
-                <div style={{fontSize:11,color:C.grey500,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>Buy Private 🏡</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
-              </div>
-
-              <div style={{position:"relative"}}>
-                {/* Center vertical line */}
-                <div className="fishbone-center-line" style={{position:"absolute",left:"50%",top:0,bottom:0,width:2,background:C.grey200,transform:"translateX(-50%)",zIndex:0}}/>
-
-                {t.milestones.map((m,i)=>{
-                  const isHdb=m.track==="hdb";
-                  const color=isHdb?C.blue:C.orange;
-                  const bgColor=isHdb?C.blueLight:C.orangeLight;
-                  const darkColor=isHdb?C.blueDark:C.orangeDark;
-                  return(
-                    <div key={i} className="fishbone-row" style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 40px 1fr",gap:0,alignItems:"center",marginBottom:12,zIndex:1}}>
-                      {/* Left column (HDB on desktop) */}
-                      <div className="col-left" style={{textAlign:"right",paddingRight:12}}>
-                        {isHdb&&(
-                          <div style={{display:"inline-block",background:bgColor,border:`1.5px solid ${color}33`,borderRadius:10,padding:"10px 14px",textAlign:"right",maxWidth:"100%"}}>
-                            <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginBottom:3}}>
-                              <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                              <span style={{fontSize:14}}>{m.icon}</span>
-                            </div>
-                            <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
-                            <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Center dot */}
-                      <div style={{display:"flex",justifyContent:"center",alignItems:"center",position:"relative"}}>
-                        <div style={{width:14,height:14,borderRadius:"50%",background:"#fff",border:`2.5px solid ${color}`,zIndex:2}}/>
-                      </div>
-
-                      {/* Right column (Private on desktop, both tracks on mobile) */}
-                      <div className="col-right" style={{textAlign:"left",paddingLeft:12}}>
-                        <div style={{display:!isHdb?"inline-block":"none"}}>
-                          <div style={{background:bgColor,border:`1.5px solid ${color}33`,borderRadius:10,padding:"10px 14px",textAlign:"left"}}>
-                            <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-start",marginBottom:3}}>
-                              <span style={{fontSize:14}}>{m.icon}</span>
-                              <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                            </div>
-                            <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
-                            <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
-                          </div>
-                        </div>
-                        {/* Mobile-only: HDB also shown on right */}
-                        <div className="fishbone-hdb-mobile" style={{display:"none"}}>
-                          {isHdb&&(
-                            <div style={{background:bgColor,border:`1.5px solid ${color}33`,borderRadius:10,padding:"10px 14px",textAlign:"left"}}>
-                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                                <span style={{fontSize:14}}>{m.icon}</span>
-                                <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                                <span style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:10,background:"#fff",color:darkColor}}>HDB</span>
-                              </div>
-                              <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
-                              <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Renovation Window & Bridging Loan - full width at the end */}
-                {t.renoWindowDays>0&&(
-                  <div style={{position:"relative",marginTop:20,paddingTop:20,borderTop:`1px dashed ${C.grey200}`,display:"grid",gap:12,zIndex:1,background:"#fff"}}>
-                    {/* Renovation Window */}
-                    <div style={{background:C.greenLight,border:"1px solid #BBF7D0",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
-                      <div style={{fontSize:14,fontWeight:700,color:C.green,marginBottom:4}}>🔨 Renovation Window</div>
-                      <div style={{fontSize:12,color:C.green,marginBottom:4}}>
-                        {fmtS(t.pvtCompletionS)} (get private keys) → {fmtS(t.extensionEnd)} (move out of HDB)
-                      </div>
-                      <div style={{fontSize:15,fontWeight:700,color:C.green}}>
-                        {t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)
-                      </div>
-                    </div>
-
-                    {/* Bridging Loan Period */}
-                    {t.bridgingLoanDays>0&&(
-                      <div style={{background:C.blueLight,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
-                        <div style={{fontSize:14,fontWeight:700,color:C.blueDark,marginBottom:4}}>💰 Bridging Loan Period</div>
-                        <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>
-                          {fmtS(t.pvtCompletionS)} (private completion) → {fmtS(t.hdbCompletionS)} (HDB completion)
-                        </div>
-                        <div style={{fontSize:15,fontWeight:700,color:C.blueDark,marginBottom:8}}>
-                          ~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)
-                        </div>
-                        <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:`1px solid ${C.blue}22`}}>
-                          📌 CPF refund: 7–14 working days after HDB Completion → est. by <strong>{fmtS(t.cpfRefundDate)}</strong>
-                        </div>
-                        <div style={{fontSize:11,color:C.grey500,marginTop:2}}>
-                          Full sale proceeds (cash + CPF) expected ~{t.cpfRefundDays} days after private completion
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Key Notes */}
-            <div style={{background:"#fff",borderRadius:14,border:`1px solid ${C.grey200}`,padding:24,marginBottom:24}}>
-              <h4 style={{fontSize:15,fontWeight:700,marginBottom:12}}>Key Notes</h4>
-              <div style={{display:"grid",gap:8}}>
-                {[
-                  "HDB Exercise Date must be BEFORE Private Exercise Date to avoid 20% ABSD.",
-                  "Bridging Loan must be applied together with Mortgage Loan. HDB Approval must be in place before bridging loan disbursement.",
-                  "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion (cash + CPF refund). Delays may incur additional interest.",
-                  "Extension of Stay requires: exercised OTP on next property, declared during resale application. Buyer's MOP starts after extension ends.",
-                  `Renovation window: ${t.renoWindowDays} days from Private Completion to HDB move-out.`,
-                  mode==="buy_first"?"Longer private exercise period (2–6 months) requires higher option fee (1–5%). Negotiate with seller.":"Private exercise period can be extended beyond 14 days if both parties agree.",
-                  "Cater time for renovation — most renovations take 2–4 months."
-                ].map((note,i)=>(
-                  <div key={i} style={{fontSize:13,color:C.grey600,lineHeight:1.6,paddingLeft:16,position:"relative"}}>
-                    <span style={{position:"absolute",left:0,color:C.blue}}>•</span>{note}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* CTA */}
-            <div style={{background:"#fff",borderRadius:14,border:`1px solid ${C.grey200}`,padding:28,textAlign:"center"}}>
-              <p style={{fontSize:15,color:C.grey500,marginBottom:14}}>Need help planning your upgrade?</p>
-              <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-                <a href="/" style={{display:"inline-block",padding:"14px 28px",background:C.blue,color:"#fff",borderRadius:10,fontWeight:600,fontSize:15,textDecoration:"none"}}>Get a Free Consultation →</a>
-                <a href="https://wa.me/+6580830688" target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"14px 28px",background:"#25D366",color:"#fff",borderRadius:10,fontWeight:600,fontSize:15,textDecoration:"none"}}>💬 WhatsApp Us</a>
-              </div>
+            <div style={{marginTop:10,display:"flex",gap:16,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blueLight}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>HDB Sale</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>{t.type==="new_ec"?"EC Purchase":"Private Purchase"}</span></div>
+              <span style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>&middot; {t.type==="new_ec"?(mode==="ec_bridging"?"With Bridging Loan":"No Bridging Loan"):(mode==="sell_first"?"Sell First":"Buy First")} &middot; {t.extensionMonths>0?t.extensionMonths+"m extension":"No extension"}</span>
             </div>
           </div>
-        )}
+
+          {/* Alerts — Private Resale */}
+          {t.type==="private_resale"&&(<>
+            {!t.absdSafe&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>ABSD Risk!</strong> Private Exercise ({fmtS(t.pvtExercise)}) is on or before HDB Exercise ({fmtS(t.hdbExercise)}). Adjust timeline.</div>}
+            {t.absdSafe&&<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"\u2705"} <strong>No ABSD</strong> &mdash; HDB Exercise is {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} before Private Exercise.</div>}
+            {!t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Bridging Loan Risk!</strong> HDB Approval ({fmtS(t.hdbApproval)}) is after Private Completion ({fmtS(t.pvtCompletionDate)}). Extend private completion or shorten HDB submission.</div>}
+            {t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"\uD83D\uDCB0"} <strong>Bridging Loan OK</strong> &mdash; HDB Approval is before Private Completion. Apply with mortgage loan.</div>}
+            {t.gapExerciseDays>0&&t.gapExerciseDays<7&&t.absdSafe&&<div className="alert-box" style={{background:C.orangeLight,border:"1px solid "+C.orangeBorder,color:"#92600A"}}>{"\u26A0\uFE0F"} <strong>Tight Timeline:</strong> Only {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} gap between exercise dates.</div>}
+          </>)}
+
+          {/* Alerts — New EC */}
+          {t.type==="new_ec"&&(<>
+            {t.hdbCompletionBeforeDeadline?<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"\u2705"} <strong>On Track</strong> &mdash; HDB completion is {t.daysToDeadline} days before the 6-month deadline ({fmtS(t.sixMonthDeadline)}).</div>:<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Deadline Risk!</strong> HDB completion ({fmtS(t.hdbCompletionS)}) is after the 6-month deadline ({fmtS(t.sixMonthDeadline)}). Start selling HDB earlier!</div>}
+            {mode==="ec_bridging"&&(t.hdbApprovalOK?<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"\uD83D\uDCB0"} <strong>Bridging Loan OK</strong> &mdash; HDB Approval ({fmtS(t.hdbApproval)}) is before EC TOP ({fmtS(t.ecTOP)}). Bridging loan can disburse.</div>:<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Bridging Loan Risk!</strong> HDB Approval ({fmtS(t.hdbApproval)}) is after EC TOP ({fmtS(t.ecTOP)}). Start selling HDB earlier!</div>)}
+            {!startDate&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"\uD83D\uDCA1"} <strong>Auto-calculated:</strong> Latest HDB OTP date is {fmtS(t.latestHdbOTP)}. Start Intent to Sell by {fmtS(t.latestIntentToSell)}. You can override with an earlier date in the HDB OTP field above.</div>}
+          </>)}
+
+          {/* Fishbone Timeline */}
+          <div style={{background:"#fff",borderRadius:16,border:"1px solid "+C.grey200,padding:"24px 20px",marginBottom:24}}>
+            <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Combined Timeline</h3>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:14,borderBottom:"1px solid "+C.grey100}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>{"\uD83C\uDFE2"} Sell HDB</span></div>
+              <div style={{fontSize:11,color:C.grey500,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{t.type==="new_ec"?"Buy EC \uD83C\uDFE0":"Buy Private \uD83C\uDFE1"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
+            </div>
+            <FishboneTimeline milestones={t.milestones}/>
+
+            {/* Renovation Window & Bridging Loan */}
+            {t.renoWindowDays>0&&(<div style={{marginTop:20,paddingTop:20,borderTop:"1px dashed "+C.grey200,display:"grid",gap:12}}>
+              <div style={{background:C.greenLight,border:"1px solid #BBF7D0",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.green}}>{"\uD83D\uDD28"} Renovation Window</div>
+                <div style={{fontSize:12,color:C.green,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.pvtCompletionS)} (get keys) &rarr; {fmtS(t.extensionEnd)} (move out of HDB)</div>
+                <div style={{fontSize:15,fontWeight:700,color:C.green}}>{t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)</div>
+              </div>
+              {t.bridgingLoanDays>0&&(<div style={{background:C.blueLight,border:"1px solid "+C.blue+"33",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.blueDark}}>{"\uD83D\uDCB0"} Bridging Loan Period</div>
+                <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.pvtCompletionS)} &rarr; {fmtS(t.hdbCompletionS)} (HDB completion)</div>
+                <div style={{fontSize:15,fontWeight:700,color:C.blueDark,marginBottom:8}}>~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)</div>
+                <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:"1px solid "+C.blue+"22"}}>{"\uD83D\uDCCC"} CPF refund: 7&ndash;14 working days after HDB Completion &rarr; est. by <strong>{fmtS(t.cpfRefundDate)}</strong></div>
+              </div>)}
+            </div>)}
+          </div>
+
+          {/* Key Notes */}
+          <div style={{background:"#fff",borderRadius:14,border:"1px solid "+C.grey200,padding:24,marginBottom:24}}>
+            <h4 style={{fontSize:15,fontWeight:700,marginBottom:12}}>Key Notes</h4>
+            <div style={{display:"grid",gap:8}}>
+              {(t.type==="private_resale"?[
+                "HDB Exercise Date must be BEFORE Private Exercise Date to avoid 20% ABSD.",
+                "Bridging Loan must be applied together with Mortgage Loan. HDB Approval must be in place before disbursement.",
+                "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion (cash + CPF refund). Delays may incur additional interest.",
+                "Extension of Stay requires: exercised OTP on next property, declared during resale application.",
+                "Renovation window: "+t.renoWindowDays+" days from Private Completion to HDB move-out.",
+                mode==="buy_first"?"Longer private exercise period (2\u20136 months) requires higher option fee (1\u20135%).":"Private exercise period can be extended beyond 14 days if both parties agree.",
+                "Cater time for renovation \u2014 most renovations take 2\u20134 months."
+              ]:[
+                "No ABSD for Singapore Citizens buying new EC (indemnity form signed to sell HDB).",
+                "Must sell HDB within 6 months of EC TOP date (not key collection, not CSC).",
+                "EC booking fee: 5% at booking, 15% at booking + 8 weeks. Total 20% + BSD from cash/CPF on hand.",
+                "HDB sale proceeds are NOT available at booking stage \u2014 plan your cash/CPF accordingly.",
+                mode==="ec_bridging"?"Bridging Loan: HDB Approval must be before EC TOP for disbursement. Apply together with mortgage loan.":"No bridging loan \u2014 more flexibility on HDB sale timing, but must complete within 6 months of TOP.",
+                "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion.",
+                "Extension of Stay available if EC TOP date is confirmed.",
+                "Cater time for renovation \u2014 most renovations take 2\u20134 months."
+              ]).map(function(note,i){return(
+                <div key={i} style={{fontSize:13,color:C.grey600,lineHeight:1.6,paddingLeft:16,position:"relative"}}>
+                  <span style={{position:"absolute",left:0,color:C.blue}}>&bull;</span>{note}
+                </div>
+              )})}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div style={{background:"#fff",borderRadius:14,border:"1px solid "+C.grey200,padding:28,textAlign:"center"}}>
+            <p style={{fontSize:15,color:C.grey500,marginBottom:14}}>Need help planning your upgrade?</p>
+            <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+              <a href="/" style={{display:"inline-block",padding:"14px 28px",background:C.blue,color:"#fff",borderRadius:10,fontWeight:600,fontSize:15,textDecoration:"none"}}>Get a Free Consultation &rarr;</a>
+              <a href="https://wa.me/+6580830688" target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"14px 28px",background:"#25D366",color:"#fff",borderRadius:10,fontWeight:600,fontSize:15,textDecoration:"none"}}>&nbsp;WhatsApp Us</a>
+            </div>
+          </div>
+        </div>)}
       </div>
 
       {/* Footer */}
-      <div style={{background:C.grey100,padding:"28px 20px",textAlign:"center",marginTop:36,borderTop:`1px solid ${C.grey200}`}}>
+      <div style={{background:C.grey100,padding:"28px 20px",textAlign:"center",marginTop:36,borderTop:"1px solid "+C.grey200}}>
         <div style={{color:C.grey900,fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:6}}>Avenue 88</div>
-        <div style={{color:C.grey500,fontSize:12}}>Huttons / Navis · © 2026 Avenue 88</div>
-        <div style={{maxWidth:720,margin:"16px auto 0",textAlign:"left",background:"#fff",border:`1px solid ${C.grey200}`,borderRadius:8,padding:"14px 16px"}}>
+        <div style={{color:C.grey500,fontSize:12}}>Huttons / Navis &middot; &copy; 2026 Avenue 88</div>
+        <div style={{maxWidth:720,margin:"16px auto 0",textAlign:"left",background:"#fff",border:"1px solid "+C.grey200,borderRadius:8,padding:"14px 16px"}}>
           <strong style={{color:C.grey600,fontSize:11,letterSpacing:.5,textTransform:"uppercase"}}>Disclaimer</strong>
           <p style={{color:C.grey500,fontSize:11,lineHeight:1.6,marginTop:6}}>The information and tools provided on this website are for general reference only and do not constitute legal, financial, or professional advice. Timelines, figures, and valuations are estimates based on available public data and typical HDB/URA processes, and actual outcomes may vary due to individual circumstances, public holidays, policy changes, or processing variations. Users should verify all details with HDB, CPF Board, IRAS, their bank, and a qualified legal or financial professional before making any decisions. Avenue 88, Huttons Asia Pte Ltd, and its representatives shall not be liable for any loss or damage arising from reliance on the information provided.</p>
         </div>
