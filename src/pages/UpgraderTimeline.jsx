@@ -132,22 +132,22 @@ export default function UpgraderTimeline(){
       var totalDays=daysBetween(intentToSell,extensionEnd);
 
       var milestones=[];
-      milestones.push({date:intentToSell,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"\uD83D\uDCCB"});
-      milestones.push({date:hdbOTP,label:mode==="buy_first"?"HDB OTP Granted (Latest by) \u2B50":"HDB OTP Granted",note:"HFE approved before OTP",track:"hdb",icon:"\uD83D\uDCDD",highlight:mode==="buy_first"});
-      milestones.push({date:requestForValue,label:"Request for Value",note:"Next working day after OTP",track:"hdb",icon:"\uD83D\uDCE4"});
-      milestones.push({date:valuationResult,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"\uD83C\uDFE0"});
-      if(mode==="buy_first"){milestones.push({date:pvtOTP,label:"Private OTP Granted",note:"Option fee: 1\u20135% \u00B7 Exercise: "+pvtExercisePeriodBF+" days",track:"pvt",icon:"\uD83D\uDD11"})}
-      milestones.push({date:hdbExercise,label:"HDB Exercise OTP \u2B50",note:"Must be BEFORE Private Exercise",track:"hdb",icon:"\u270F\uFE0F",highlight:true});
-      if(mode==="sell_first"){milestones.push({date:pvtOTP,label:"Private OTP Granted",note:"Option fee: 1% \u00B7 Exercise: "+pvtExercisePeriod+" days",track:"pvt",icon:"\uD83D\uDD11"})}
-      milestones.push({date:pvtExercise,label:"Private Exercise OTP \u2B50",note:"Must be AFTER HDB Exercise \u00B7 Pay 5% less option fee",track:"pvt",icon:"\u270F\uFE0F",highlight:true});
-      milestones.push({date:resaleApp,label:"HDB Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"\uD83D\uDCC4"});
-      milestones.push({date:bsdDue,label:"BSD Payable",note:"3\u20136% \u00B7 Within 14 days of S&P",track:"pvt",icon:"\uD83D\uDCB5"});
-      milestones.push({date:hdbAcceptance,label:"HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"\u2705"});
-      milestones.push({date:hdbEndorsement,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"\u270D\uFE0F"});
-      milestones.push({date:hdbApproval,label:"HDB Approval",note:"Bridging loan can disburse after this",track:"hdb",icon:"\uD83C\uDFDB\uFE0F"});
-      milestones.push({date:pvtCompletionDate,label:"Private Completion \u2B50",note:"Get keys \u00B7 Start renovation",track:"pvt",icon:"\uD83D\uDD11",highlight:true});
-      milestones.push({date:hdbCompletionDate,label:"HDB Completion",note:extension>0?"Extension of Stay begins":"Keys handover",track:"hdb",icon:"\uD83C\uDFE2"});
-      if(extension>0){milestones.push({date:extensionEnd,label:"Extension Ends ("+extension+"m)",note:"Move out of HDB",track:"hdb",icon:"\uD83C\uDFE1"})}
+      milestones.push({date:intentToSell,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"📋"});
+      milestones.push({date:hdbOTP,label:mode==="buy_first"?"HDB OTP Granted (Latest by) ⭐":"HDB OTP Granted",note:"HFE approved before OTP",track:"hdb",icon:"📝",highlight:mode==="buy_first"});
+      milestones.push({date:requestForValue,label:"Request for Value",note:"Next working day after OTP",track:"hdb",icon:"📤"});
+      milestones.push({date:valuationResult,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"🏠"});
+      if(mode==="buy_first"){milestones.push({date:pvtOTP,label:"Private OTP Granted",note:"Option fee: 1–5% · Exercise: "+pvtExercisePeriodBF+" days",track:"pvt",icon:"🔑"})}
+      milestones.push({date:hdbExercise,label:"HDB Exercise OTP ⭐",note:"Must be BEFORE Private Exercise",track:"hdb",icon:"✏️",highlight:true});
+      if(mode==="sell_first"){milestones.push({date:pvtOTP,label:"Private OTP Granted",note:"Option fee: 1% · Exercise: "+pvtExercisePeriod+" days",track:"pvt",icon:"🔑"})}
+      milestones.push({date:pvtExercise,label:"Private Exercise OTP ⭐",note:"Must be AFTER HDB Exercise · Pay 5% less option fee",track:"pvt",icon:"✏️",highlight:true});
+      milestones.push({date:resaleApp,label:"HDB Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"📄"});
+      milestones.push({date:bsdDue,label:"BSD Payable",note:"3–6% · Within 14 days of S&P",track:"pvt",icon:"💵"});
+      milestones.push({date:hdbAcceptance,label:"HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"✅"});
+      milestones.push({date:hdbEndorsement,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"✍️"});
+      milestones.push({date:hdbApproval,label:"HDB Approval",note:"Bridging loan can disburse after this",track:"hdb",icon:"🏛️"});
+      milestones.push({date:pvtCompletionDate,label:"Private Completion ⭐",note:"Get keys · Start renovation",track:"pvt",icon:"🔑",highlight:true});
+      milestones.push({date:hdbCompletionDate,label:"HDB Completion",note:extension>0?"Extension of Stay begins":"Keys handover",track:"hdb",icon:"🏢"});
+      if(extension>0){milestones.push({date:extensionEnd,label:"Extension Ends ("+extension+"m)",note:"Move out of HDB",track:"hdb",icon:"🏡"})}
       milestones.sort(function(a,b){return a.date-b.date});
 
       return{type:"private_resale",milestones:milestones,mode:mode,absdSafe:absdSafe,hdbApprovalBeforePvtCompletion:hdbApprovalBeforePvtCompletion,renoWindowDays:renoWindowDays,gapExerciseDays:gapExerciseDays,totalDays:totalDays,hdbExercise:hdbExercise,pvtExercise:pvtExercise,hdbApproval:hdbApproval,pvtCompletionDate:pvtCompletionDate,extensionEnd:extensionEnd,extensionMonths:extension,pvtCompletionS:pvtCompletionDate,hdbCompletionS:hdbCompletionDate,bridgingLoanDays:bridgingLoanDays,cpfRefundDate:cpfRefundDate,cpfRefundDays:daysBetween(pvtCompletionDate,cpfRefundDate)};
@@ -194,14 +194,9 @@ export default function UpgraderTimeline(){
       latestHdbOTP=addD(latestHdbExercise,-21);
       latestIntentToSell=addD(latestHdbOTP,-7);
 
-      // If user provided a start date (manual override), use that instead
-      var hdbOTP2,hdbExercise2;
-      if(startDate){
-        hdbOTP2=new Date(startDate+"T00:00:00");
-      } else {
-        hdbOTP2=latestHdbOTP;
-      }
-      hdbExercise2=addD(hdbOTP2,21);
+      // Always use auto-calculated latest date
+      var hdbOTP2=latestHdbOTP;
+      var hdbExercise2=addD(hdbOTP2,21);
       var intentToSell2=addD(hdbOTP2,-7);
       var requestForValue2=nextWD(hdbOTP2);
       var valuationResult2=addWD(hdbOTP2,5);
@@ -225,26 +220,26 @@ export default function UpgraderTimeline(){
       var ms=[];
       // EC milestones
       if(ecBooking){
-        ms.push({date:ecBooking,label:"EC Booking",note:"Pay 5% booking fee \u00B7 Cash/CPF on hand",track:"pvt",icon:"\uD83C\uDFE0"});
-        ms.push({date:ecExercise,label:"EC Exercise OTP",note:"Sign S&P within 21 days",track:"pvt",icon:"\u270F\uFE0F"});
-        ms.push({date:ecBSD,label:"EC BSD Payable",note:"3\u20136% \u00B7 No ABSD (indemnity signed)",track:"pvt",icon:"\uD83D\uDCB5"});
-        ms.push({date:ec2ndPayment,label:"EC 2nd Payment (15%)",note:"8 weeks after booking \u00B7 Total 20% \u00B7 Must have cash/CPF",track:"pvt",icon:"\uD83D\uDCB0",highlight:true});
+        ms.push({date:ecBooking,label:"EC Booking",note:"Pay 5% booking fee · Cash/CPF on hand",track:"pvt",icon:"🏠"});
+        ms.push({date:ecExercise,label:"EC Exercise OTP",note:"Sign S&P within 21 days",track:"pvt",icon:"✏️"});
+        ms.push({date:ecBSD,label:"EC BSD Payable",note:"3–6% · No ABSD (indemnity signed)",track:"pvt",icon:"💵"});
+        ms.push({date:ec2ndPayment,label:"EC 2nd Payment (15%)",note:"8 weeks after booking · Total 20% · Must have cash/CPF",track:"pvt",icon:"💰",highlight:true});
       }
-      ms.push({date:ecTOP,label:"EC TOP \u2B50",note:"Get keys \u00B7 Mortgage starts \u00B7 Start renovation",track:"pvt",icon:"\uD83D\uDD11",highlight:true});
-      ms.push({date:sixMonthDeadline,label:"6-Month Deadline \u2B50",note:"Must sell HDB by this date",track:"pvt",icon:"\u26A0\uFE0F",highlight:true});
+      ms.push({date:ecTOP,label:"EC TOP ⭐",note:"Get keys · Mortgage starts · Start renovation",track:"pvt",icon:"🔑",highlight:true});
+      if(mode==="ec_no_bridging"){ms.push({date:sixMonthDeadline,label:"6-Month Deadline ⭐",note:"Must sell HDB by this date",track:"pvt",icon:"⚠️",highlight:true})}
 
       // HDB milestones
-      ms.push({date:intentToSell2,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"\uD83D\uDCCB"});
-      ms.push({date:hdbOTP2,label:"HDB OTP Granted \u2B50",note:startDate?"Your chosen date":"Latest recommended date",track:"hdb",icon:"\uD83D\uDCDD",highlight:true});
-      ms.push({date:requestForValue2,label:"Request for Value",note:"Next working day after OTP",track:"hdb",icon:"\uD83D\uDCE4"});
-      ms.push({date:valuationResult2,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"\uD83C\uDFE0"});
-      ms.push({date:hdbExercise2,label:"HDB Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"\u270F\uFE0F"});
-      ms.push({date:resaleApp2,label:"HDB Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"\uD83D\uDCC4"});
-      ms.push({date:hdbAcceptance2,label:"HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"\u2705"});
-      ms.push({date:hdbEndorsement2,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"\u270D\uFE0F"});
-      ms.push({date:hdbApproval2,label:"HDB Approval",note:mode==="ec_bridging"?"Must be before EC TOP for bridging loan":"~2 weeks after endorsement",track:"hdb",icon:"\uD83C\uDFDB\uFE0F",highlight:mode==="ec_bridging"});
-      ms.push({date:hdbCompletionDate2,label:"HDB Completion",note:extension>0?"Extension of Stay begins":"Keys handover \u00B7 Sale proceeds released",track:"hdb",icon:"\uD83C\uDFE2"});
-      if(extension>0){ms.push({date:extensionEnd2,label:"Extension Ends ("+extension+"m)",note:"Move out of HDB \u00B7 Move into EC",track:"hdb",icon:"\uD83C\uDFE1"})}
+      ms.push({date:intentToSell2,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"📋"});
+      ms.push({date:hdbOTP2,label:"HDB OTP Granted (Latest by) ⭐",note:"Auto-calculated · Latest date to start selling",track:"hdb",icon:"📝",highlight:true});
+      ms.push({date:requestForValue2,label:"Request for Value",note:"Next working day after OTP",track:"hdb",icon:"📤"});
+      ms.push({date:valuationResult2,label:"Valuation Result",note:"Within 5 working days",track:"hdb",icon:"🏠"});
+      ms.push({date:hdbExercise2,label:"HDB Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"✏️"});
+      ms.push({date:resaleApp2,label:"HDB Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"📄"});
+      ms.push({date:hdbAcceptance2,label:"HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"✅"});
+      ms.push({date:hdbEndorsement2,label:"HDB Endorsement",note:"~3 weeks after acceptance",track:"hdb",icon:"✍️"});
+      ms.push({date:hdbApproval2,label:"HDB Approval",note:mode==="ec_bridging"?"Must be before EC TOP for bridging loan":"~2 weeks after endorsement",track:"hdb",icon:"🏛️",highlight:mode==="ec_bridging"});
+      ms.push({date:hdbCompletionDate2,label:"HDB Completion",note:extension>0?"Extension of Stay begins":"Keys handover · Sale proceeds released",track:"hdb",icon:"🏢"});
+      if(extension>0){ms.push({date:extensionEnd2,label:"Extension Ends ("+extension+"m)",note:"Move out of HDB · Move into EC",track:"hdb",icon:"🏡"})}
 
       ms.sort(function(a,b){return a.date-b.date});
 
@@ -346,15 +341,15 @@ export default function UpgraderTimeline(){
                 <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>{mode==="sell_first"?"HDB OTP Grant Date *":"Private OTP Grant Date *"}</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}} style={{maxWidth:280}}/>{startDate&&<div style={{fontSize:12,color:C.blue,marginTop:6,fontWeight:600}}>Selected: {fmtS(new Date(startDate+"T00:00:00"))}</div>}</div>
                 <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:8,display:"block"}}>Private Exercise Timing</label>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    <button type="button" onClick={function(){setSafetyMode("after_hdb_exercise")}} style={{padding:"12px 14px",borderRadius:10,border:"2px solid "+(safetyMode==="after_hdb_exercise"?C.blue:C.grey200),background:safetyMode==="after_hdb_exercise"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}><div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_exercise"?C.blue:C.grey900}}>After HDB Exercise</div><div style={{fontSize:11,color:C.grey500}}>Standard \u00B7 Faster</div></button>
+                    <button type="button" onClick={function(){setSafetyMode("after_hdb_exercise")}} style={{padding:"12px 14px",borderRadius:10,border:"2px solid "+(safetyMode==="after_hdb_exercise"?C.blue:C.grey200),background:safetyMode==="after_hdb_exercise"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}><div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_exercise"?C.blue:C.grey900}}>After HDB Exercise</div><div style={{fontSize:11,color:C.grey500}}>Standard · Faster</div></button>
                     <button type="button" onClick={function(){setSafetyMode("after_hdb_acceptance")}} style={{padding:"12px 14px",borderRadius:10,border:"2px solid "+(safetyMode==="after_hdb_acceptance"?C.blue:C.grey200),background:safetyMode==="after_hdb_acceptance"?C.blueLight:"#fff",cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',sans-serif"}}><div style={{fontSize:13,fontWeight:700,color:safetyMode==="after_hdb_acceptance"?C.blue:C.grey900}}>After HDB Acceptance</div><div style={{fontSize:11,color:C.grey500}}>Extra safe</div></button>
                   </div>
                 </div>
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
-              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>\uD83C\uDFE2 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:mode==="buy_first"?C.green:"#92600A",marginTop:4,fontWeight:500}}>{mode==="buy_first"?"\uD83D\uDCA1 Tip: Shorter is better":"\uD83D\uDCA1 Tip: Longer gives more time to find private"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
-              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>\uD83C\uDFE1 Private Purchase Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Exercise Period</label>{mode==="sell_first"?<select className="fi" value={pvtExercisePeriod} onChange={function(e){setPvtExercisePeriod(Number(e.target.value))}}><option value={14}>14 days (standard)</option><option value={21}>21 days</option><option value={30}>30 days</option><option value={60}>60 days</option></select>:<select className="fi" value={pvtExercisePeriodBF} onChange={function(e){setPvtExercisePeriodBF(Number(e.target.value))}}><option value={60}>2 months</option><option value={90}>3 months</option><option value={120}>4 months</option><option value={150}>5 months</option><option value={180}>6 months</option></select>}{mode==="buy_first"&&<div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"\uD83D\uDCA1 Tip: Longer is better"}</div>}</div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Completion Period</label><select className="fi" value={pvtCompletion} onChange={function(e){setPvtCompletion(Number(e.target.value))}}>{[8,10,12,14,16].map(function(w){return <option key={w} value={w}>{w} weeks</option>})}</select></div></div>{mode==="buy_first"&&<div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>{"\u26A0\uFE0F Longer exercise period requires higher option fee (1\u20135%)."}</div>}</div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>🏢 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:mode==="buy_first"?C.green:"#92600A",marginTop:4,fontWeight:500}}>{mode==="buy_first"?"💡 Tip: Shorter is better":"💡 Tip: Longer gives more time to find private"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏡 Private Purchase Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Exercise Period</label>{mode==="sell_first"?<select className="fi" value={pvtExercisePeriod} onChange={function(e){setPvtExercisePeriod(Number(e.target.value))}}><option value={14}>14 days (standard)</option><option value={21}>21 days</option><option value={30}>30 days</option><option value={60}>60 days</option></select>:<select className="fi" value={pvtExercisePeriodBF} onChange={function(e){setPvtExercisePeriodBF(Number(e.target.value))}}><option value={60}>2 months</option><option value={90}>3 months</option><option value={120}>4 months</option><option value={150}>5 months</option><option value={180}>6 months</option></select>}{mode==="buy_first"&&<div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"💡 Tip: Longer is better"}</div>}</div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Completion Period</label><select className="fi" value={pvtCompletion} onChange={function(e){setPvtCompletion(Number(e.target.value))}}>{[8,10,12,14,16].map(function(w){return <option key={w} value={w}>{w} weeks</option>})}</select></div></div>{mode==="buy_first"&&<div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>{"⚠️ Longer exercise period requires higher option fee (1–5%)."}</div>}</div>
             </div>
           </div>
         )}
@@ -362,10 +357,10 @@ export default function UpgraderTimeline(){
         {purchaseType==="new_ec"&&mode&&(
           <div className="fade-up">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>\uD83C\uDFE0 EC Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>EC Booking Date</label><input className="fi" type="date" value={ecBookingDate} onChange={function(e){setEcBookingDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional \u00B7 Leave blank if not yet booked</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Expected EC TOP Date *</label><input className="fi" type="date" value={ecTopDate} onChange={function(e){setEcTopDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Provided by developer \u00B7 Typically 3\u20135 years from launch</div></div></div></div>
-              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>\uD83C\uDFE2 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>HDB OTP Date (override)</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional \u00B7 Leave blank to auto-calculate latest date</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"\uD83D\uDCA1 Tip: Shorter is better \u2014 speeds up HDB completion"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏠 EC Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>EC Booking Date</label><input className="fi" type="date" value={ecBookingDate} onChange={function(e){setEcBookingDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional · Leave blank if not yet booked</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Expected EC TOP Date *</label><input className="fi" type="date" value={ecTopDate} onChange={function(e){setEcTopDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Provided by developer · Typically 3–5 years from launch</div></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>🏢 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"💡 Tip: Shorter is better — speeds up HDB completion"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
             </div>
-            <div className="alert-box" style={{background:C.orangeLight,border:"1px solid "+C.orangeBorder,color:"#92600A",marginBottom:24}}>{"\u26A0\uFE0F"} <strong>Important:</strong> EC booking fee (5%) + 2nd payment at 8 weeks (15%) + BSD must come from existing cash/CPF. HDB sale proceeds are not available at this stage.</div>
+            <div className="alert-box" style={{background:C.orangeLight,border:"1px solid "+C.orangeBorder,color:"#92600A",marginBottom:24}}>{"⚠️"} <strong>Important:</strong> EC booking fee (5%) + 2nd payment at 8 weeks (15%) + BSD must come from existing cash/CPF. HDB sale proceeds are not available at this stage.</div>
           </div>
         )}
 
@@ -387,41 +382,41 @@ export default function UpgraderTimeline(){
           {/* Alerts — Private Resale */}
           {t.type==="private_resale"&&(<>
             {!t.absdSafe&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>ABSD Risk!</strong> Private Exercise ({fmtS(t.pvtExercise)}) is on or before HDB Exercise ({fmtS(t.hdbExercise)}). Adjust timeline.</div>}
-            {t.absdSafe&&<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"\u2705"} <strong>No ABSD</strong> &mdash; HDB Exercise is {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} before Private Exercise.</div>}
+            {t.absdSafe&&<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"✅"} <strong>No ABSD</strong> &mdash; HDB Exercise is {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} before Private Exercise.</div>}
             {!t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Bridging Loan Risk!</strong> HDB Approval ({fmtS(t.hdbApproval)}) is after Private Completion ({fmtS(t.pvtCompletionDate)}). Extend private completion or shorten HDB submission.</div>}
-            {t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"\uD83D\uDCB0"} <strong>Bridging Loan OK</strong> &mdash; HDB Approval is before Private Completion. Apply with mortgage loan.</div>}
-            {t.gapExerciseDays>0&&t.gapExerciseDays<7&&t.absdSafe&&<div className="alert-box" style={{background:C.orangeLight,border:"1px solid "+C.orangeBorder,color:"#92600A"}}>{"\u26A0\uFE0F"} <strong>Tight Timeline:</strong> Only {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} gap between exercise dates.</div>}
+            {t.hdbApprovalBeforePvtCompletion&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"💰"} <strong>Bridging Loan OK</strong> &mdash; HDB Approval is before Private Completion. Apply with mortgage loan.</div>}
+            {t.gapExerciseDays>0&&t.gapExerciseDays<7&&t.absdSafe&&<div className="alert-box" style={{background:C.orangeLight,border:"1px solid "+C.orangeBorder,color:"#92600A"}}>{"⚠️"} <strong>Tight Timeline:</strong> Only {t.gapExerciseDays} day{t.gapExerciseDays>1?"s":""} gap between exercise dates.</div>}
           </>)}
 
           {/* Alerts — New EC */}
           {t.type==="new_ec"&&(<>
-            {t.hdbCompletionBeforeDeadline?<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"\u2705"} <strong>On Track</strong> &mdash; HDB completion is {t.daysToDeadline} days before the 6-month deadline ({fmtS(t.sixMonthDeadline)}).</div>:<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Deadline Risk!</strong> HDB completion ({fmtS(t.hdbCompletionS)}) is after the 6-month deadline ({fmtS(t.sixMonthDeadline)}). Start selling HDB earlier!</div>}
-            {mode==="ec_bridging"&&(t.hdbApprovalOK?<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"\uD83D\uDCB0"} <strong>Bridging Loan OK</strong> &mdash; HDB Approval ({fmtS(t.hdbApproval)}) is before EC TOP ({fmtS(t.ecTOP)}). Bridging loan can disburse.</div>:<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Bridging Loan Risk!</strong> HDB Approval ({fmtS(t.hdbApproval)}) is after EC TOP ({fmtS(t.ecTOP)}). Start selling HDB earlier!</div>)}
-            {!startDate&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"\uD83D\uDCA1"} <strong>Auto-calculated:</strong> Latest HDB OTP date is {fmtS(t.latestHdbOTP)}. Start Intent to Sell by {fmtS(t.latestIntentToSell)}. You can override with an earlier date in the HDB OTP field above.</div>}
+            {t.hdbCompletionBeforeDeadline?<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"✅"} <strong>On Track</strong> &mdash; HDB completion is {t.daysToDeadline} days before the 6-month deadline ({fmtS(t.sixMonthDeadline)}).</div>:<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Deadline Risk!</strong> HDB completion ({fmtS(t.hdbCompletionS)}) is after the 6-month deadline ({fmtS(t.sixMonthDeadline)}). Start selling HDB earlier!</div>}
+            {mode==="ec_bridging"&&(t.hdbApprovalOK?<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"💰"} <strong>Bridging Loan OK</strong> &mdash; HDB Approval ({fmtS(t.hdbApproval)}) is before EC TOP ({fmtS(t.ecTOP)}). Bridging loan can disburse.</div>:<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"\uD83D\uDEA8"} <strong>Bridging Loan Risk!</strong> HDB Approval ({fmtS(t.hdbApproval)}) is after EC TOP ({fmtS(t.ecTOP)}). Start selling HDB earlier!</div>)}
+            <div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"💡"} <strong>Auto-calculated:</strong> Latest HDB OTP date is {fmtS(t.latestHdbOTP)}. Start Intent to Sell by {fmtS(t.latestIntentToSell)}.</div>
           </>)}
 
           {/* Fishbone Timeline */}
           <div style={{background:"#fff",borderRadius:16,border:"1px solid "+C.grey200,padding:"24px 20px",marginBottom:24}}>
             <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Combined Timeline</h3>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:14,borderBottom:"1px solid "+C.grey100}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>{"\uD83C\uDFE2"} Sell HDB</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>{"🏢"} Sell HDB</span></div>
               <div style={{fontSize:11,color:C.grey500,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{t.type==="new_ec"?"Buy EC \uD83C\uDFE0":"Buy Private \uD83C\uDFE1"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{t.type==="new_ec"?"Buy EC 🏠":"Buy Private 🏡"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
             </div>
             <FishboneTimeline milestones={t.milestones}/>
 
             {/* Renovation Window & Bridging Loan */}
             {t.renoWindowDays>0&&(<div style={{marginTop:20,paddingTop:20,borderTop:"1px dashed "+C.grey200,display:"grid",gap:12}}>
               <div style={{background:C.greenLight,border:"1px solid #BBF7D0",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
-                <div style={{fontSize:14,fontWeight:700,color:C.green}}>{"\uD83D\uDD28"} Renovation Window</div>
+                <div style={{fontSize:14,fontWeight:700,color:C.green}}>{"🔨"} Renovation Window</div>
                 <div style={{fontSize:12,color:C.green,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.pvtCompletionS)} (get keys) &rarr; {fmtS(t.extensionEnd)} (move out of HDB)</div>
                 <div style={{fontSize:15,fontWeight:700,color:C.green}}>{t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)</div>
               </div>
               {t.bridgingLoanDays>0&&(<div style={{background:C.blueLight,border:"1px solid "+C.blue+"33",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
-                <div style={{fontSize:14,fontWeight:700,color:C.blueDark}}>{"\uD83D\uDCB0"} Bridging Loan Period</div>
+                <div style={{fontSize:14,fontWeight:700,color:C.blueDark}}>{"💰"} Bridging Loan Period</div>
                 <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.pvtCompletionS)} &rarr; {fmtS(t.hdbCompletionS)} (HDB completion)</div>
                 <div style={{fontSize:15,fontWeight:700,color:C.blueDark,marginBottom:8}}>~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)</div>
-                <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:"1px solid "+C.blue+"22"}}>{"\uD83D\uDCCC"} CPF refund: 7&ndash;14 working days after HDB Completion &rarr; est. by <strong>{fmtS(t.cpfRefundDate)}</strong></div>
+                <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:"1px solid "+C.blue+"22"}}>{"📌"} CPF refund: 7&ndash;14 working days after HDB Completion &rarr; est. by <strong>{fmtS(t.cpfRefundDate)}</strong></div>
               </div>)}
             </div>)}
           </div>
@@ -436,17 +431,17 @@ export default function UpgraderTimeline(){
                 "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion (cash + CPF refund). Delays may incur additional interest.",
                 "Extension of Stay requires: exercised OTP on next property, declared during resale application.",
                 "Renovation window: "+t.renoWindowDays+" days from Private Completion to HDB move-out.",
-                mode==="buy_first"?"Longer private exercise period (2\u20136 months) requires higher option fee (1\u20135%).":"Private exercise period can be extended beyond 14 days if both parties agree.",
-                "Cater time for renovation \u2014 most renovations take 2\u20134 months."
+                mode==="buy_first"?"Longer private exercise period (2–6 months) requires higher option fee (1–5%).":"Private exercise period can be extended beyond 14 days if both parties agree.",
+                "Cater time for renovation — most renovations take 2–4 months."
               ]:[
                 "No ABSD for Singapore Citizens buying new EC (indemnity form signed to sell HDB).",
                 "Must sell HDB within 6 months of EC TOP date (not key collection, not CSC).",
                 "EC booking fee: 5% at booking, 15% at booking + 8 weeks. Total 20% + BSD from cash/CPF on hand.",
-                "HDB sale proceeds are NOT available at booking stage \u2014 plan your cash/CPF accordingly.",
-                mode==="ec_bridging"?"Bridging Loan: HDB Approval must be before EC TOP for disbursement. Apply together with mortgage loan.":"No bridging loan \u2014 more flexibility on HDB sale timing, but must complete within 6 months of TOP.",
+                "HDB sale proceeds are NOT available at booking stage — plan your cash/CPF accordingly.",
+                mode==="ec_bridging"?"Bridging Loan: HDB Approval must be before EC TOP for disbursement. Apply together with mortgage loan.":"No bridging loan — more flexibility on HDB sale timing, but must complete within 6 months of TOP.",
                 "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion.",
                 "Extension of Stay available if EC TOP date is confirmed.",
-                "Cater time for renovation \u2014 most renovations take 2\u20134 months."
+                "Cater time for renovation — most renovations take 2–4 months."
               ]).map(function(note,i){return(
                 <div key={i} style={{fontSize:13,color:C.grey600,lineHeight:1.6,paddingLeft:16,position:"relative"}}>
                   <span style={{position:"absolute",left:0,color:C.blue}}>&bull;</span>{note}
