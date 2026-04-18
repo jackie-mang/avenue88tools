@@ -83,11 +83,14 @@ export default function UpgraderTimeline(){
   // EC inputs
   var [ecTopDate,setEcTopDate]=useState("");
   var [ecBookingDate,setEcBookingDate]=useState("");
+  // HDB-to-HDB inputs
+  var [buyHdbOtpDate,setBuyHdbOtpDate]=useState("");
+  var [buyHdbSubmission,setBuyHdbSubmission]=useState(30);
   // Tracking
   var [tracked,setTracked]=useState(false);
 
   // Reset when purchase type changes
-  function selectPurchaseType(t){setPurchaseType(t);setMode("");setStartDate("");setEcTopDate("");setEcBookingDate("");setTracked(false)}
+  function selectPurchaseType(t){setPurchaseType(t);setMode("");setStartDate("");setEcTopDate("");setEcBookingDate("");setBuyHdbOtpDate("");setTracked(false)}
 
   var timeline=useMemo(function(){
     // === PRIVATE RESALE MODE ===
@@ -246,8 +249,119 @@ export default function UpgraderTimeline(){
       return{type:"new_ec",milestones:ms,mode:mode,hdbApprovalOK:hdbApprovalOK,hdbCompletionBeforeDeadline:hdbCompletionBeforeDeadline,daysToDeadline:daysToDeadline,renoWindowDays:renoWindowDays2,totalDays:totalDays2,hdbApproval:hdbApproval2,hdbCompletionS:hdbCompletionDate2,ecTOP:ecTOP,sixMonthDeadline:sixMonthDeadline,extensionEnd:extensionEnd2,extensionMonths:extension,bridgingLoanDays:bridgingLoanDays2>0?bridgingLoanDays2:0,cpfRefundDate:cpfRefundDate2,cpfRefundDays:daysBetween(ecTOP,cpfRefundDate2),latestHdbOTP:latestHdbOTP,latestIntentToSell:latestIntentToSell};
     }
 
+    // === HDB TO HDB MODE ===
+    if(purchaseType==="resale_hdb"&&mode){
+      // Helper to build one HDB track
+      function buildHdbTrack(otpDate,subPeriod){
+        var otp=new Date(otpDate+"T00:00:00");
+        var its=addD(otp,-7);var rfv=nextWD(otp);var vr=addWD(otp,5);
+        var ex=addD(otp,21);var ra=addD(ex,subPeriod);
+        var acc=addWD(ra,28);var end2=addW(acc,3);var apr=addW(end2,2);var comp=addW(acc,8);
+        return{its:its,otp:otp,rfv:rfv,vr:vr,ex:ex,ra:ra,acc:acc,end:end2,apr:apr,comp:comp}
+      }
+
+      var ms=[];
+      if(mode==="hdb_contra"&&startDate&&buyHdbOtpDate){
+        var sell=buildHdbTrack(startDate,hdbSubmission);
+        var buy=buildHdbTrack(buyHdbOtpDate,buyHdbSubmission);
+        // Contra: both applications within 7 days
+        var laterExercise=sell.ex>buy.ex?sell.ex:buy.ex;
+        var contraApp=addD(laterExercise,Math.min(hdbSubmission,buyHdbSubmission));
+        // Both processed together — use the later application date
+        var contraAcceptance=addWD(contraApp,28);
+        var contraEndorse=addW(contraAcceptance,3);
+        var contraApproval=addW(contraEndorse,2);
+        var contraCompletion=addW(contraAcceptance,8);
+        var extEnd=extension>0?addD(contraCompletion,extension*30):contraCompletion;
+        var appGap=Math.abs(daysBetween(sell.ra,buy.ra));
+        var renoW=daysBetween(contraCompletion,extEnd);
+
+        ms.push({date:sell.its,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"📋"});
+        ms.push({date:sell.otp,label:"Sell HDB: OTP Granted",note:"Buyer pays up to $1,000",track:"hdb",icon:"📝"});
+        ms.push({date:buy.otp,label:"Buy HDB: OTP Granted",note:"Pay option fee · HFE approved before OTP",track:"pvt",icon:"📝"});
+        ms.push({date:sell.ex,label:"Sell HDB: Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"✏️"});
+        ms.push({date:buy.ex,label:"Buy HDB: Exercise OTP",note:"Pay up to $4,000 · Both must use HDB loan",track:"pvt",icon:"✏️"});
+        ms.push({date:contraApp,label:"Contra Resale Applications ⭐",note:"Both buy + sell submitted within 7 days · HDB loan for both",track:"hdb",icon:"📄",highlight:true});
+        ms.push({date:contraAcceptance,label:"HDB Acceptance (Both)",note:"Within 28 working days · Processed concurrently",track:"hdb",icon:"✅"});
+        ms.push({date:contraEndorse,label:"HDB Endorsement (Both)",note:"~3 weeks after acceptance",track:"hdb",icon:"✍️"});
+        ms.push({date:contraApproval,label:"HDB Approval (Both)",note:"~2 weeks after endorsement",track:"hdb",icon:"🏛️"});
+        ms.push({date:contraCompletion,label:"Completion (Same Day) ⭐",note:"Both transactions complete together · Keys exchange",track:"hdb",icon:"🔑",highlight:true});
+        if(extension>0){ms.push({date:extEnd,label:"Extension Ends ("+extension+"m)",note:"Move out of old HDB · Extension only for selling flat",track:"hdb",icon:"🏡"})}
+
+        ms.sort(function(a,b){return a.date-b.date});
+        return{type:"resale_hdb",milestones:ms,mode:mode,totalDays:daysBetween(sell.its,extEnd),renoWindowDays:renoW,extensionEnd:extEnd,extensionMonths:extension,contraAppGap:appGap,contraCompletion:contraCompletion,hdbCompletionS:contraCompletion}
+      }
+
+      if(mode==="hdb_buy_first"&&buyHdbOtpDate){
+        var buyT=buildHdbTrack(buyHdbOtpDate,buyHdbSubmission);
+        // Sell HDB: auto-calculate — sell approval must be before buy completion for bridging loan
+        // Work backwards: approval = completion - 3w, endorsement = approval - 2w... 
+        // Actually: approval must be before buyT.comp
+        var sellApprovalDeadline=addD(buyT.comp,-14);
+        var sellAcceptanceTarget=addD(sellApprovalDeadline,-35);
+        var sellResaleAppTarget=addD(sellAcceptanceTarget,-40);
+        var sellExerciseTarget=addD(sellResaleAppTarget,-hdbSubmission);
+        var sellOtpTarget=addD(sellExerciseTarget,-21);
+        var sellOtp=startDate?new Date(startDate+"T00:00:00"):sellOtpTarget;
+        var sellT=buildHdbTrack(startDate||sellOtpTarget.toISOString().split("T")[0],hdbSubmission);
+        var extEnd2=extension>0?addD(sellT.comp,extension*30):sellT.comp;
+        var bridgingDays=daysBetween(buyT.comp,sellT.comp);
+        var cpfRef=addWD(sellT.comp,14);
+        var sellApprovalOK=sellT.apr<=buyT.comp;
+        var renoW2=daysBetween(buyT.comp,extEnd2);
+
+        ms.push({date:buyT.otp,label:"Buy HDB: OTP Granted",note:"Pay option fee · HFE approved · Use bank loan (recommended)",track:"pvt",icon:"📝"});
+        ms.push({date:buyT.rfv,label:"Buy: Request for Value",note:"Next working day",track:"pvt",icon:"📤"});
+        ms.push({date:buyT.ex,label:"Buy HDB: Exercise OTP",note:"Pay up to $4,000",track:"pvt",icon:"✏️"});
+        ms.push({date:buyT.ra,label:"Buy: Resale Application",note:buyHdbSubmission+"-day period · Longer is better (up to 80 days)",track:"pvt",icon:"📄"});
+        ms.push({date:sellT.its,label:"Intent to Sell",note:startDate?"Your chosen date":"Latest recommended date",track:"hdb",icon:"📋"});
+        ms.push({date:sellT.otp,label:"Sell HDB: OTP Granted ⭐",note:startDate?"Your chosen date":"Auto-calculated latest date",track:"hdb",icon:"📝",highlight:true});
+        ms.push({date:sellT.ex,label:"Sell HDB: Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"✏️"});
+        ms.push({date:sellT.ra,label:"Sell: Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"📄"});
+        ms.push({date:buyT.acc,label:"Buy: HDB Acceptance",note:"Within 28 working days",track:"pvt",icon:"✅"});
+        ms.push({date:sellT.acc,label:"Sell: HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"✅"});
+        ms.push({date:sellT.end,label:"Sell: Endorsement",note:"~3 weeks",track:"hdb",icon:"✍️"});
+        ms.push({date:sellT.apr,label:"Sell: HDB Approval ⭐",note:"Must be before Buy completion for bridging loan",track:"hdb",icon:"🏛️",highlight:true});
+        ms.push({date:buyT.comp,label:"Buy HDB: Completion ⭐",note:"Get keys to new HDB · Start renovation",track:"pvt",icon:"🔑",highlight:true});
+        ms.push({date:sellT.comp,label:"Sell HDB: Completion",note:extension>0?"Extension begins":"Keys handover · Proceeds released",track:"hdb",icon:"🏢"});
+        if(extension>0){ms.push({date:extEnd2,label:"Extension Ends ("+extension+"m)",note:"Move out of old HDB",track:"hdb",icon:"🏡"})}
+
+        ms.sort(function(a,b){return a.date-b.date});
+        return{type:"resale_hdb",milestones:ms,mode:mode,totalDays:daysBetween(buyT.otp,extEnd2),renoWindowDays:renoW2,extensionEnd:extEnd2,extensionMonths:extension,sellApprovalOK:sellApprovalOK,hdbCompletionS:sellT.comp,buyCompletionS:buyT.comp,bridgingLoanDays:bridgingDays>0?bridgingDays:0,cpfRefundDate:cpfRef,sellApproval:sellT.apr,latestSellOtp:sellOtpTarget,latestSellIts:addD(sellOtpTarget,-7)}
+      }
+
+      if(mode==="hdb_sell_first"&&startDate){
+        var sellT2=buildHdbTrack(startDate,hdbSubmission);
+        var extEnd3=extension>0?addD(sellT2.comp,extension*30):sellT2.comp;
+        // Buy HDB: after sell completion or during extension
+        var buyStart=buyHdbOtpDate?new Date(buyHdbOtpDate+"T00:00:00"):sellT2.comp;
+        var buyT2=buildHdbTrack(buyHdbOtpDate||sellT2.comp.toISOString().split("T")[0],buyHdbSubmission);
+        var renoW3=daysBetween(buyT2.comp,extEnd3);
+        if(renoW3<0)renoW3=0;
+
+        ms.push({date:sellT2.its,label:"Intent to Sell",note:"Register on HDB Portal",track:"hdb",icon:"📋"});
+        ms.push({date:sellT2.otp,label:"Sell HDB: OTP Granted",note:"Buyer pays up to $1,000",track:"hdb",icon:"📝"});
+        ms.push({date:sellT2.rfv,label:"Sell: Request for Value",note:"Next working day",track:"hdb",icon:"📤"});
+        ms.push({date:sellT2.ex,label:"Sell HDB: Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"✏️"});
+        ms.push({date:sellT2.ra,label:"Sell: Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"📄"});
+        ms.push({date:sellT2.acc,label:"Sell: HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"✅"});
+        ms.push({date:sellT2.end,label:"Sell: Endorsement",note:"~3 weeks",track:"hdb",icon:"✍️"});
+        ms.push({date:sellT2.apr,label:"Sell: HDB Approval",note:"~2 weeks after endorsement",track:"hdb",icon:"🏛️"});
+        ms.push({date:sellT2.comp,label:"Sell HDB: Completion ⭐",note:extension>0?"Extension begins · Start looking for new HDB":"Keys handover · Start looking for new HDB",track:"hdb",icon:"🏢",highlight:true});
+        if(extension>0){ms.push({date:extEnd3,label:"Extension Ends ("+extension+"m)",note:"Must move out of old HDB by this date",track:"hdb",icon:"🏡"})}
+        ms.push({date:buyT2.otp,label:"Buy HDB: OTP Granted",note:"Use bank loan (recommended) · Faster disbursement",track:"pvt",icon:"📝"});
+        ms.push({date:buyT2.ex,label:"Buy HDB: Exercise OTP",note:"Pay up to $4,000",track:"pvt",icon:"✏️"});
+        ms.push({date:buyT2.ra,label:"Buy: Resale Application",note:buyHdbSubmission+"-day period",track:"pvt",icon:"📄"});
+        ms.push({date:buyT2.acc,label:"Buy: HDB Acceptance",note:"Within 28 working days",track:"pvt",icon:"✅"});
+        ms.push({date:buyT2.comp,label:"Buy HDB: Completion ⭐",note:"Get keys to new HDB",track:"pvt",icon:"🔑",highlight:true});
+
+        ms.sort(function(a,b){return a.date-b.date});
+        return{type:"resale_hdb",milestones:ms,mode:mode,totalDays:daysBetween(sellT2.its,buyT2.comp>extEnd3?buyT2.comp:extEnd3),renoWindowDays:renoW3,extensionEnd:extEnd3,extensionMonths:extension,hdbCompletionS:sellT2.comp,buyCompletionS:buyT2.comp}
+      }
+    }
+
     return null;
-  },[purchaseType,mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion,ecTopDate,ecBookingDate]);
+  },[purchaseType,mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion,ecTopDate,ecBookingDate,buyHdbOtpDate,buyHdbSubmission]);
 
   var t=timeline;
   if(t&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Upgrader Timeline",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:purchaseType+" "+mode,page:"Upgrader Timeline"})}
@@ -286,14 +400,18 @@ export default function UpgraderTimeline(){
         <div className="section-card" style={{padding:28}}>
           <h3 style={{fontSize:17,fontWeight:700,marginBottom:6}}>Step 1: What are you buying?</h3>
           <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Select your next property type to see the relevant timeline.</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
             <button className={"mode-btn "+(purchaseType==="private_resale"?"active":"")} onClick={function(){selectPurchaseType("private_resale")}}>
               <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:purchaseType==="private_resale"?C.blue:C.grey900}}>Private Resale</div>
-              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy an existing private condo or apartment on the resale market.</div>
+              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy an existing private condo on the resale market.</div>
             </button>
             <button className={"mode-btn "+(purchaseType==="new_ec"?"active":"")} onClick={function(){selectPurchaseType("new_ec")}}>
               <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:purchaseType==="new_ec"?C.blue:C.grey900}}>New EC</div>
-              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy a new Executive Condominium from developer. No ABSD. Deferred payment available.</div>
+              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy a new EC from developer. No ABSD. Deferred payment.</div>
+            </button>
+            <button className={"mode-btn "+(purchaseType==="resale_hdb"?"active":"")} onClick={function(){selectPurchaseType("resale_hdb")}}>
+              <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:purchaseType==="resale_hdb"?C.blue:C.grey900}}>Resale HDB</div>
+              <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>Buy another resale HDB. No ABSD. Contra available.</div>
             </button>
           </div>
         </div>
@@ -329,6 +447,55 @@ export default function UpgraderTimeline(){
                 <div style={{fontSize:15,fontWeight:700,marginBottom:4,color:mode==="ec_no_bridging"?C.blue:C.grey900}}>No Bridging Loan</div>
                 <div style={{fontSize:12,color:C.grey500,lineHeight:1.4}}>More flexibility. Sell HDB within 6 months of TOP.</div>
               </button>
+            </div>
+          </div>
+        )}
+
+        {purchaseType==="resale_hdb"&&(
+          <div className="fade-up section-card" style={{padding:28}}>
+            <h3 style={{fontSize:17,fontWeight:700,marginBottom:6}}>Step 2: Choose Your Approach</h3>
+            <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>No ABSD for HDB-to-HDB. Choose how you want to sequence the transactions.</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+              <button className={"mode-btn "+(mode==="hdb_contra"?"active":"")} onClick={function(){setMode("hdb_contra")}}>
+                <div style={{fontSize:14,fontWeight:700,marginBottom:4,color:mode==="hdb_contra"?C.blue:C.grey900}}>Contra</div>
+                <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Buy + Sell processed together. Same completion day. Both must use HDB loan.</div>
+              </button>
+              <button className={"mode-btn "+(mode==="hdb_buy_first"?"active":"")} onClick={function(){setMode("hdb_buy_first")}}>
+                <div style={{fontSize:14,fontWeight:700,marginBottom:4,color:mode==="hdb_buy_first"?C.blue:C.grey900}}>Buy HDB First</div>
+                <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Secure new HDB first, then sell. Use bank loan for purchase. Bridging loan needed.</div>
+              </button>
+              <button className={"mode-btn "+(mode==="hdb_sell_first"?"active":"")} onClick={function(){setMode("hdb_sell_first")}}>
+                <div style={{fontSize:14,fontWeight:700,marginBottom:4,color:mode==="hdb_sell_first"?C.blue:C.grey900}}>Sell HDB First</div>
+                <div style={{fontSize:11,color:C.grey500,lineHeight:1.4}}>Sell current HDB first, then buy. Use bank loan for purchase (recommended).</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Resale HDB Inputs */}
+        {purchaseType==="resale_hdb"&&mode==="hdb_contra"&&(
+          <div className="fade-up">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>🏢 Sell Current HDB</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Sell HDB OTP Date *</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}}/></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select><div style={{fontSize:11,color:C.blue,marginTop:4}}>Extension only for your selling flat</div></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏠 Buy New HDB</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Buy HDB OTP Date *</label><input className="fi" type="date" value={buyHdbOtpDate} onChange={function(e){setBuyHdbOtpDate(e.target.value)}}/></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={buyHdbSubmission} onChange={function(e){setBuyHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select></div></div><div style={{marginTop:12,padding:"8px 12px",background:C.blueLight,borderRadius:6,fontSize:11,color:C.blueDark}}>Both buy + sell must use HDB loan for Contra. Applications must be within 7 days of each other.</div></div>
+            </div>
+          </div>
+        )}
+
+        {purchaseType==="resale_hdb"&&mode==="hdb_buy_first"&&(
+          <div className="fade-up">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏠 Buy New HDB (First)</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Buy HDB OTP Date *</label><input className="fi" type="date" value={buyHdbOtpDate} onChange={function(e){setBuyHdbOtpDate(e.target.value)}}/></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Buy: Submission Period</label><select className="fi" value={buyHdbSubmission} onChange={function(e){setBuyHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>💡 Tip: Longer is better (up to 80 days) — gives time to sell current HDB</div></div></div><div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>⚠️ Use bank loan for purchase (not HDB loan) — enables bridging loan for faster disbursement.</div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>🏢 Sell Current HDB</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Sell HDB OTP Date</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional · Leave blank to auto-calculate latest date</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Sell: Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>💡 Tip: Shorter is better — speeds up HDB completion</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
+            </div>
+          </div>
+        )}
+
+        {purchaseType==="resale_hdb"&&mode==="hdb_sell_first"&&(
+          <div className="fade-up">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>🏢 Sell Current HDB (First)</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Sell HDB OTP Date *</label><input className="fi" type="date" value={startDate} onChange={function(e){setStartDate(e.target.value)}}/></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Sell: Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select><div style={{fontSize:11,color:C.blue,marginTop:4}}>Extension gives time to find and buy new HDB</div></div></div></div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏠 Buy New HDB (After)</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Buy HDB OTP Date</label><input className="fi" type="date" value={buyHdbOtpDate} onChange={function(e){setBuyHdbOtpDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional · Leave blank to auto-calculate after sell completion</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Buy: Submission Period</label><select className="fi" value={buyHdbSubmission} onChange={function(e){setBuyHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select></div></div><div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>⚠️ Use bank loan for purchase (recommended) — HDB loan may not disburse in time.</div></div>
             </div>
           </div>
         )}
@@ -374,8 +541,8 @@ export default function UpgraderTimeline(){
             </div>
             <div style={{marginTop:10,display:"flex",gap:16,flexWrap:"wrap"}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blueLight}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>HDB Sale</span></div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>{t.type==="new_ec"?"EC Purchase":"Private Purchase"}</span></div>
-              <span style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>&middot; {t.type==="new_ec"?(mode==="ec_bridging"?"With Bridging Loan":"No Bridging Loan"):(mode==="sell_first"?"Sell First":"Buy First")} &middot; {t.extensionMonths>0?t.extensionMonths+"m extension":"No extension"}</span>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>{t.type==="new_ec"?"EC Purchase":t.type==="resale_hdb"?"HDB Purchase":"Private Purchase"}</span></div>
+              <span style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>&middot; {t.type==="new_ec"?(mode==="ec_bridging"?"With Bridging Loan":"No Bridging Loan"):t.type==="resale_hdb"?(mode==="hdb_contra"?"Contra":mode==="hdb_buy_first"?"Buy First":"Sell First"):(mode==="sell_first"?"Sell First":"Buy First")} &middot; {t.extensionMonths>0?t.extensionMonths+"m extension":"No extension"}</span>
             </div>
           </div>
 
@@ -395,13 +562,22 @@ export default function UpgraderTimeline(){
             <div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"💡"} <strong>Auto-calculated:</strong> Latest HDB OTP date is {fmtS(t.latestHdbOTP)}. Start Intent to Sell by {fmtS(t.latestIntentToSell)}.</div>
           </>)}
 
+          {/* Alerts — Resale HDB */}
+          {t.type==="resale_hdb"&&(<>
+            {mode==="hdb_contra"&&t.contraAppGap>7&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"🚨"} <strong>Contra Risk!</strong> Resale applications are {t.contraAppGap} days apart. Must be within 7 days for Contra. Adjust your OTP dates.</div>}
+            {mode==="hdb_contra"&&t.contraAppGap<=7&&<div className="alert-box" style={{background:C.greenLight,border:"1px solid #BBF7D0",color:C.green}}>{"✅"} <strong>Contra OK</strong> &mdash; Both transactions will be processed together. Completion on the same day.</div>}
+            {mode==="hdb_buy_first"&&t.sellApprovalOK&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"💰"} <strong>Bridging Loan OK</strong> &mdash; Sell HDB Approval ({fmtS(t.sellApproval)}) is before Buy HDB Completion ({fmtS(t.buyCompletionS)}). Bridging loan can disburse.</div>}
+            {mode==="hdb_buy_first"&&!t.sellApprovalOK&&<div className="alert-box" style={{background:C.redLight,border:"1px solid #FECACA",color:C.red}}>{"🚨"} <strong>Bridging Loan Risk!</strong> Sell HDB Approval ({fmtS(t.sellApproval)}) is after Buy HDB Completion ({fmtS(t.buyCompletionS)}). Start selling earlier or extend buy submission period.</div>}
+            {mode==="hdb_buy_first"&&!startDate&&t.latestSellOtp&&<div className="alert-box" style={{background:C.blueLight,border:"1px solid "+C.blue+"33",color:C.blueDark}}>{"💡"} <strong>Auto-calculated:</strong> Latest Sell HDB OTP date is {fmtS(t.latestSellOtp)}. Start Intent to Sell by {fmtS(t.latestSellIts)}.</div>}
+          </>)}
+
           {/* Fishbone Timeline */}
           <div style={{background:"#fff",borderRadius:16,border:"1px solid "+C.grey200,padding:"24px 20px",marginBottom:24}}>
             <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Combined Timeline</h3>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:14,borderBottom:"1px solid "+C.grey100}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>{"🏢"} Sell HDB</span></div>
               <div style={{fontSize:11,color:C.grey500,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{t.type==="new_ec"?"Buy EC 🏠":"Buy Private 🏡"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{t.type==="new_ec"?"Buy EC 🏠":t.type==="resale_hdb"?"Buy HDB 🏠":"Buy Private 🏡"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
             </div>
             <FishboneTimeline milestones={t.milestones}/>
 
@@ -409,12 +585,12 @@ export default function UpgraderTimeline(){
             {t.renoWindowDays>0&&(<div style={{marginTop:20,paddingTop:20,borderTop:"1px dashed "+C.grey200,display:"grid",gap:12}}>
               <div style={{background:C.greenLight,border:"1px solid #BBF7D0",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
                 <div style={{fontSize:14,fontWeight:700,color:C.green}}>{"🔨"} Renovation Window</div>
-                <div style={{fontSize:12,color:C.green,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.pvtCompletionS)} (get keys) &rarr; {fmtS(t.extensionEnd)} (move out of HDB)</div>
+                <div style={{fontSize:12,color:C.green,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.type==="resale_hdb"&&t.buyCompletionS?t.buyCompletionS:t.pvtCompletionS)} (get keys) &rarr; {fmtS(t.extensionEnd)} (move out of HDB)</div>
                 <div style={{fontSize:15,fontWeight:700,color:C.green}}>{t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)</div>
               </div>
               {t.bridgingLoanDays>0&&(<div style={{background:C.blueLight,border:"1px solid "+C.blue+"33",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
                 <div style={{fontSize:14,fontWeight:700,color:C.blueDark}}>{"💰"} Bridging Loan Period</div>
-                <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.pvtCompletionS)} &rarr; {fmtS(t.hdbCompletionS)} (HDB completion)</div>
+                <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.type==="resale_hdb"&&t.buyCompletionS?t.buyCompletionS:t.pvtCompletionS)} &rarr; {fmtS(t.hdbCompletionS)} (HDB completion)</div>
                 <div style={{fontSize:15,fontWeight:700,color:C.blueDark,marginBottom:8}}>~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)</div>
                 <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:"1px solid "+C.blue+"22"}}>{"📌"} CPF refund: 7&ndash;14 working days after HDB Completion &rarr; est. by <strong>{fmtS(t.cpfRefundDate)}</strong></div>
               </div>)}
@@ -433,7 +609,7 @@ export default function UpgraderTimeline(){
                 "Renovation window: "+t.renoWindowDays+" days from Private Completion to HDB move-out.",
                 mode==="buy_first"?"Longer private exercise period (2–6 months) requires higher option fee (1–5%).":"Private exercise period can be extended beyond 14 days if both parties agree.",
                 "Cater time for renovation — most renovations take 2–4 months."
-              ]:[
+              ]:t.type==="new_ec"?[
                 "No ABSD for Singapore Citizens buying new EC (indemnity form signed to sell HDB).",
                 "Must sell HDB within 6 months of EC TOP date (not key collection, not CSC).",
                 "EC booking fee: 5% at booking, 15% at booking + 8 weeks. Total 20% + BSD from cash/CPF on hand.",
@@ -442,7 +618,19 @@ export default function UpgraderTimeline(){
                 "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion.",
                 "Extension of Stay available if EC TOP date is confirmed.",
                 "Cater time for renovation — most renovations take 2–4 months."
-              ]).map(function(note,i){return(
+              ]:[
+                "No ABSD for HDB-to-HDB transactions.",
+                mode==="hdb_contra"?"Contra: Both buy and sell must use HDB loan. Applications must be within 7 days of each other. Completion on the same day.":"",
+                mode==="hdb_contra"?"Extension of Stay only applies to the selling flat. The flat being bought cannot have extension from its seller.":"",
+                mode==="hdb_buy_first"?"Use bank loan (not HDB loan) for the purchase — enables bridging loan for faster disbursement.":"",
+                mode==="hdb_buy_first"?"Bridging Loan: Sell HDB Approval must be in place before Buy HDB Completion for disbursement.":"",
+                mode==="hdb_buy_first"?"Longer buy submission period (up to 80 days) recommended — gives time to sell current HDB before valuation expires.":"",
+                mode==="hdb_sell_first"?"Use bank loan for purchase (recommended) — HDB loan may not disburse in time.":"",
+                mode==="hdb_sell_first"?"Extension of Stay gives time to find and purchase new HDB.":"",
+                "Remember to repay the Bridging Loan upon receipt of funds after HDB Completion (cash + CPF refund).",
+                "CPF refund: 7–14 working days after HDB Completion.",
+                "Cater time for renovation — most renovations take 2–4 months."
+              ].filter(Boolean)).map(function(note,i){return(
                 <div key={i} style={{fontSize:13,color:C.grey600,lineHeight:1.6,paddingLeft:16,position:"relative"}}>
                   <span style={{position:"absolute",left:0,color:C.blue}}>&bull;</span>{note}
                 </div>
