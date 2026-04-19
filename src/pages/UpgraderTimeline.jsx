@@ -252,13 +252,13 @@ export default function UpgraderTimeline(){
     // === HDB TO HDB MODE ===
     if(purchaseType==="resale_hdb"&&mode){
       // Helper to build one HDB track
-      function buildHdbTrack(otpDate,subPeriod){
+      var buildHdbTrack=function(otpDate,subPeriod){
         var otp=new Date(otpDate+"T00:00:00");
         var its=addD(otp,-7);var rfv=nextWD(otp);var vr=addWD(otp,5);
         var ex=addD(otp,21);var ra=addD(ex,subPeriod);
         var acc=addWD(ra,28);var end2=addW(acc,3);var apr=addW(end2,2);var comp=addW(acc,8);
         return{its:its,otp:otp,rfv:rfv,vr:vr,ex:ex,ra:ra,acc:acc,end:end2,apr:apr,comp:comp}
-      }
+      };
 
       var ms=[];
       if(mode==="hdb_contra"&&startDate&&buyHdbOtpDate){
@@ -333,9 +333,9 @@ export default function UpgraderTimeline(){
       if(mode==="hdb_sell_first"&&startDate){
         var sellT2=buildHdbTrack(startDate,hdbSubmission);
         var extEnd3=extension>0?addD(sellT2.comp,extension*30):sellT2.comp;
-        // Buy HDB: after sell completion or during extension
-        var buyStart=buyHdbOtpDate?new Date(buyHdbOtpDate+"T00:00:00"):sellT2.comp;
-        var buyT2=buildHdbTrack(buyHdbOtpDate||sellT2.comp.toISOString().split("T")[0],buyHdbSubmission);
+        // Buy HDB: default to after sell exercise date if not specified
+        var buyDefaultDate=addD(sellT2.ex,1);
+        var buyT2=buildHdbTrack(buyHdbOtpDate||buyDefaultDate.toISOString().split("T")[0],buyHdbSubmission);
         var renoW3=daysBetween(buyT2.comp,extEnd3);
         if(renoW3<0)renoW3=0;
 
