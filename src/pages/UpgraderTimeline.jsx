@@ -80,6 +80,7 @@ export default function UpgraderTimeline(){
   var [pvtExercisePeriod,setPvtExercisePeriod]=useState(14);
   var [pvtExercisePeriodBF,setPvtExercisePeriodBF]=useState(90);
   var [pvtCompletion,setPvtCompletion]=useState(10);
+  var [pvtOtpDate,setPvtOtpDate]=useState("");
   // EC inputs
   var [ecTopDate,setEcTopDate]=useState("");
   var [ecBookingDate,setEcBookingDate]=useState("");
@@ -90,7 +91,7 @@ export default function UpgraderTimeline(){
   var [tracked,setTracked]=useState(false);
 
   // Reset when purchase type changes
-  function selectPurchaseType(t){setPurchaseType(t);setMode("");setStartDate("");setEcTopDate("");setEcBookingDate("");setBuyHdbOtpDate("");setTracked(false)}
+  function selectPurchaseType(t){setPurchaseType(t);setMode("");setStartDate("");setEcTopDate("");setEcBookingDate("");setBuyHdbOtpDate("");setPvtOtpDate("");setTracked(false)}
 
   var timeline=useMemo(function(){
     // === PRIVATE RESALE MODE ===
@@ -101,7 +102,13 @@ export default function UpgraderTimeline(){
         hdbExercise=addD(hdbOTP,21);
         var resaleAppTmp=addD(hdbExercise,hdbSubmission);
         hdbAcceptance=addWD(resaleAppTmp,28);
-        if(safetyMode==="after_hdb_acceptance"){pvtOTP=addD(hdbAcceptance,1)}else{pvtOTP=addD(hdbExercise,1)}
+        if(pvtOtpDate){
+          pvtOTP=new Date(pvtOtpDate+"T00:00:00");
+        } else if(safetyMode==="after_hdb_acceptance"){
+          pvtOTP=addD(hdbAcceptance,1);
+        } else {
+          pvtOTP=addD(hdbExercise,1);
+        }
         pvtExercise=addD(pvtOTP,pvtExercisePeriod);
       } else {
         pvtOTP=new Date(startDate+"T00:00:00");
@@ -301,7 +308,7 @@ export default function UpgraderTimeline(){
         if(extension>0){ms.push({date:extEnd,label:"Extension Ends ("+extension+"m)",note:"Move out of old HDB · Extension only for selling flat",track:"hdb",icon:"🏡"})}
 
         ms.sort(function(a,b){return a.date-b.date});
-        return{type:"resale_hdb",milestones:ms,mode:mode,totalDays:daysBetween(sellIts,extEnd),renoWindowDays:renoW,extensionEnd:extEnd,extensionMonths:extension,contraCompletion:contraCompletion,hdbCompletionS:contraCompletion,sellRa:sellRa,buyRa:buyRa}
+        return{type:"resale_hdb",milestones:ms,mode:mode,totalDays:daysBetween(sellIts,extEnd),renoWindowDays:renoW,extensionEnd:extEnd,extensionMonths:extension,contraCompletion:contraCompletion,hdbCompletionS:contraCompletion,buyCompletionS:contraCompletion,sellRa:sellRa,buyRa:buyRa}
       }
 
       if(mode==="hdb_buy_first"&&buyHdbOtpDate){
@@ -373,7 +380,7 @@ export default function UpgraderTimeline(){
     }
 
     return null;
-  },[purchaseType,mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion,ecTopDate,ecBookingDate,buyHdbOtpDate,buyHdbSubmission]);
+  },[purchaseType,mode,startDate,safetyMode,hdbSubmission,extension,pvtExercisePeriod,pvtExercisePeriodBF,pvtCompletion,pvtOtpDate,ecTopDate,ecBookingDate,buyHdbOtpDate,buyHdbSubmission]);
 
   var t=timeline;
   if(t&&!tracked){setTracked(true);sendToSheet({type:"tool_usage",tool:"Upgrader Timeline",streetName:"",flatType:"",sizeSqm:"",floorLevel:"",resultShown:purchaseType+" "+mode,page:"Upgrader Timeline"})}
@@ -534,7 +541,7 @@ export default function UpgraderTimeline(){
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
               <div className="section-card" style={{borderLeft:"3px solid "+C.blue}}><div className="section-label" style={{color:C.blue}}>🏢 HDB Sale Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Resale Submission Period</label><select className="fi" value={hdbSubmission} onChange={function(e){setHdbSubmission(Number(e.target.value))}}>{[7,14,21,30,45,60,80].map(function(d){return <option key={d} value={d}>{d} days{d===80?" (max)":""}</option>})}</select><div style={{fontSize:11,color:mode==="buy_first"?C.green:"#92600A",marginTop:4,fontWeight:500}}>{mode==="buy_first"?"💡 Tip: Shorter is better":"💡 Tip: Longer gives more time to find private"}</div></div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Extension of Stay</label><select className="fi" value={extension} onChange={function(e){setExtension(Number(e.target.value))}}><option value={0}>No extension</option><option value={1}>1 month</option><option value={2}>2 months</option><option value={3}>3 months (max)</option></select></div></div></div>
-              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏡 Private Purchase Details</div><div style={{display:"grid",gap:14}}><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Exercise Period</label>{mode==="sell_first"?<select className="fi" value={pvtExercisePeriod} onChange={function(e){setPvtExercisePeriod(Number(e.target.value))}}><option value={14}>14 days (standard)</option><option value={21}>21 days</option><option value={30}>30 days</option><option value={60}>60 days</option></select>:<select className="fi" value={pvtExercisePeriodBF} onChange={function(e){setPvtExercisePeriodBF(Number(e.target.value))}}><option value={60}>2 months</option><option value={90}>3 months</option><option value={120}>4 months</option><option value={150}>5 months</option><option value={180}>6 months</option></select>}{mode==="buy_first"&&<div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"💡 Tip: Longer is better"}</div>}</div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Completion Period</label><select className="fi" value={pvtCompletion} onChange={function(e){setPvtCompletion(Number(e.target.value))}}>{[8,10,12,14,16].map(function(w){return <option key={w} value={w}>{w} weeks</option>})}</select></div></div>{mode==="buy_first"&&<div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>{"⚠️ Longer exercise period requires higher option fee (1–5%)."}</div>}</div>
+              <div className="section-card" style={{borderLeft:"3px solid "+C.orange}}><div className="section-label" style={{color:C.orange}}>🏡 Private Purchase Details</div><div style={{display:"grid",gap:14}}>{mode==="sell_first"&&<div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Private OTP Grant Date</label><input className="fi" type="date" value={pvtOtpDate} onChange={function(e){setPvtOtpDate(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Optional · Leave blank to auto-calculate based on HDB exercise timing</div>{pvtOtpDate&&<div style={{fontSize:11,color:C.orange,marginTop:4,fontWeight:600}}>Selected: {fmtS(new Date(pvtOtpDate+"T00:00:00"))}</div>}</div>}<div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Exercise Period</label>{mode==="sell_first"?<select className="fi" value={pvtExercisePeriod} onChange={function(e){setPvtExercisePeriod(Number(e.target.value))}}><option value={14}>14 days (standard)</option><option value={21}>21 days</option><option value={30}>30 days</option><option value={60}>60 days</option></select>:<select className="fi" value={pvtExercisePeriodBF} onChange={function(e){setPvtExercisePeriodBF(Number(e.target.value))}}><option value={60}>2 months</option><option value={90}>3 months</option><option value={120}>4 months</option><option value={150}>5 months</option><option value={180}>6 months</option></select>}{mode==="buy_first"&&<div style={{fontSize:11,color:C.green,marginTop:4,fontWeight:500}}>{"💡 Tip: Longer is better"}</div>}</div><div><label style={{fontSize:12,fontWeight:600,color:C.grey600,marginBottom:4,display:"block"}}>Completion Period</label><select className="fi" value={pvtCompletion} onChange={function(e){setPvtCompletion(Number(e.target.value))}}>{[8,10,12,14,16].map(function(w){return <option key={w} value={w}>{w} weeks</option>})}</select></div></div>{mode==="buy_first"&&<div style={{marginTop:12,padding:"8px 12px",background:C.orangeLight,borderRadius:6,fontSize:11,color:"#92600A"}}>{"⚠️ Longer exercise period requires higher option fee (1–5%)."}</div>}</div>
             </div>
           </div>
         )}
