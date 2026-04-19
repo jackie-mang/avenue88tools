@@ -365,21 +365,21 @@ export default function UpgraderTimeline(){
         var sellApprovalOK=sellT.apr<=buyT.comp;
         var renoW2=daysBetween(buyT.comp,extEnd2);
 
-        ms.push({date:buyT.otp,label:"Buy HDB: OTP Granted",note:"Pay option fee · HFE approved · Use bank loan (recommended)",track:"pvt",icon:"📝"});
-        ms.push({date:buyT.rfv,label:"Buy: Request for Value",note:"Next working day",track:"pvt",icon:"📤"});
-        ms.push({date:buyT.ex,label:"Buy HDB: Exercise OTP",note:"Pay up to $4,000",track:"pvt",icon:"✏️"});
-        ms.push({date:buyT.ra,label:"Buy: Resale Application",note:buyHdbSubmission+"-day period · Longer is better (up to 80 days)",track:"pvt",icon:"📄"});
-        ms.push({date:sellT.its,label:"Intent to Sell",note:startDate?"Your chosen date":"Latest recommended date",track:"hdb",icon:"📋"});
-        ms.push({date:sellT.otp,label:"Sell HDB: OTP Granted ⭐",note:startDate?"Your chosen date":"Auto-calculated latest date",track:"hdb",icon:"📝",highlight:true});
-        ms.push({date:sellT.ex,label:"Sell HDB: Exercise OTP",note:"Buyer pays up to $4,000",track:"hdb",icon:"✏️"});
-        ms.push({date:sellT.ra,label:"Sell: Resale Application",note:hdbSubmission+"-day period",track:"hdb",icon:"📄"});
-        ms.push({date:buyT.acc,label:"Buy: HDB Acceptance",note:"Within 28 working days",track:"pvt",icon:"✅"});
-        ms.push({date:sellT.acc,label:"Sell: HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"✅"});
-        ms.push({date:sellT.end,label:"Sell: Endorsement",note:"~3 weeks",track:"hdb",icon:"✍️"});
-        ms.push({date:sellT.apr,label:"Sell: HDB Approval ⭐",note:"Must be before Buy completion for bridging loan",track:"hdb",icon:"🏛️",highlight:true});
-        ms.push({date:buyT.comp,label:"Buy HDB: Completion ⭐",note:"Get keys to new HDB · Start renovation",track:"pvt",icon:"🔑",highlight:true});
-        ms.push({date:sellT.comp,label:"Sell HDB: Completion",note:extension>0?"Extension begins":"Keys handover · Proceeds released",track:"hdb",icon:"🏢"});
-        if(extension>0){ms.push({date:extEnd2,label:"Extension Ends ("+extension+"m)",note:"Move out of old HDB",track:"hdb",icon:"🏡"})}
+        ms.push({date:buyT.otp,label:"Buy HDB: OTP Granted",note:"Pay option fee · HFE approved · Use bank loan (recommended)",track:"hdb",icon:"📝"});
+        ms.push({date:buyT.rfv,label:"Buy: Request for Value",note:"Next working day",track:"hdb",icon:"📤"});
+        ms.push({date:buyT.ex,label:"Buy HDB: Exercise OTP",note:"Pay up to $4,000",track:"hdb",icon:"✏️"});
+        ms.push({date:buyT.ra,label:"Buy: Resale Application",note:buyHdbSubmission+"-day period · Longer is better (up to 80 days)",track:"hdb",icon:"📄"});
+        ms.push({date:sellT.its,label:"Intent to Sell",note:startDate?"Your chosen date":"Latest recommended date",track:"pvt",icon:"📋"});
+        ms.push({date:sellT.otp,label:"Sell HDB: OTP Granted ⭐",note:startDate?"Your chosen date":"Auto-calculated latest date",track:"pvt",icon:"📝",highlight:true});
+        ms.push({date:sellT.ex,label:"Sell HDB: Exercise OTP",note:"Buyer pays up to $4,000",track:"pvt",icon:"✏️"});
+        ms.push({date:sellT.ra,label:"Sell: Resale Application",note:hdbSubmission+"-day period",track:"pvt",icon:"📄"});
+        ms.push({date:buyT.acc,label:"Buy: HDB Acceptance",note:"Within 28 working days",track:"hdb",icon:"✅"});
+        ms.push({date:sellT.acc,label:"Sell: HDB Acceptance",note:"Within 28 working days",track:"pvt",icon:"✅"});
+        ms.push({date:sellT.end,label:"Sell: Endorsement",note:"~3 weeks",track:"pvt",icon:"✍️"});
+        ms.push({date:sellT.apr,label:"Sell: HDB Approval ⭐",note:"Must be before Buy completion for bridging loan",track:"pvt",icon:"🏛️",highlight:true});
+        ms.push({date:buyT.comp,label:"Buy HDB: Completion ⭐",note:"Get keys to new HDB · Start renovation",track:"hdb",icon:"🔑",highlight:true});
+        ms.push({date:sellT.comp,label:"Sell HDB: Completion",note:extension>0?"Extension begins":"Keys handover · Proceeds released",track:"pvt",icon:"🏢"});
+        if(extension>0){ms.push({date:extEnd2,label:"Extension Ends ("+extension+"m)",note:"Move out of old HDB",track:"pvt",icon:"🏡"})}
 
         ms.sort(function(a,b){return a.date-b.date});
         return{type:"resale_hdb",milestones:ms,mode:mode,totalDays:daysBetween(buyT.otp,extEnd2),renoWindowDays:renoW2,extensionEnd:extEnd2,extensionMonths:extension,sellApprovalOK:sellApprovalOK,hdbCompletionS:sellT.comp,buyCompletionS:buyT.comp,bridgingLoanDays:bridgingDays>0?bridgingDays:0,cpfRefundDate:cpfRef,sellApproval:sellT.apr,latestSellOtp:sellOtpTarget,latestSellIts:addD(sellOtpTarget,-7)}
@@ -601,8 +601,8 @@ export default function UpgraderTimeline(){
               <div style={{textAlign:"right"}}><div style={{color:"rgba(255,255,255,0.7)",fontSize:12,fontWeight:600}}>Renovation Window</div><div style={{color:"#fff",fontSize:20,fontWeight:700}}>{t.renoWindowDays} days (~{(t.renoWindowDays/30).toFixed(1)} months)</div></div>
             </div>
             <div style={{marginTop:10,display:"flex",gap:16,flexWrap:"wrap"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blueLight}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>HDB Sale</span></div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>{t.type==="new_ec"?"EC Purchase":t.type==="resale_hdb"?"HDB Purchase":"Private Purchase"}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blueLight}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>{mode==="hdb_buy_first"?"HDB Purchase":"HDB Sale"}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/><span style={{color:"rgba(255,255,255,0.7)",fontSize:12}}>{mode==="hdb_buy_first"?"HDB Sale":t.type==="new_ec"?"EC Purchase":t.type==="resale_hdb"?"HDB Purchase":"Private Purchase"}</span></div>
               <span style={{color:"rgba(255,255,255,0.5)",fontSize:12}}>&middot; {t.type==="new_ec"?(mode==="ec_bridging"?"With Bridging Loan":"No Bridging Loan"):t.type==="resale_hdb"?(mode==="hdb_contra"?"Contra":mode==="hdb_buy_first"?"Buy First":"Sell First"):(mode==="sell_first"?"Sell First":"Buy First")} &middot; {t.extensionMonths>0?t.extensionMonths+"m extension":"No extension"}</span>
             </div>
           </div>
@@ -635,9 +635,9 @@ export default function UpgraderTimeline(){
           <div style={{background:"#fff",borderRadius:16,border:"1px solid "+C.grey200,padding:"24px 20px",marginBottom:24}}>
             <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Combined Timeline</h3>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:14,borderBottom:"1px solid "+C.grey100}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>{"🏢"} Sell HDB</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,borderRadius:"50%",background:C.blue}}/><span style={{fontSize:12,fontWeight:600,color:C.blue}}>{mode==="hdb_buy_first"?"🏠 Buy HDB":"🏢 Sell HDB"}</span></div>
               <div style={{fontSize:11,color:C.grey500,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{t.type==="new_ec"?"Buy EC 🏠":t.type==="resale_hdb"?"Buy HDB 🏠":"Buy Private 🏡"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.orange}}>{mode==="hdb_buy_first"?"Sell HDB 🏢":t.type==="new_ec"?"Buy EC 🏠":t.type==="resale_hdb"?"Buy HDB 🏠":"Buy Private 🏡"}</span><div style={{width:10,height:10,borderRadius:"50%",background:C.orange}}/></div>
             </div>
             <FishboneTimeline milestones={t.milestones}/>
 
