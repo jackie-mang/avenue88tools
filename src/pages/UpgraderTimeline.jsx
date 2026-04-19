@@ -13,50 +13,86 @@ function fmtS(d){return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYe
 function daysBetween(a,b){return Math.round((b-a)/(1000*60*60*24))}
 
 function FishboneTimeline(props){
-  var milestones=props.milestones,searchScope=props.searchScope;
+  var milestones=props.milestones;
   if(!milestones||!milestones.length)return null;
+  var both="#D4A017",bothLight="#FFF9E6",bothDark="#8B6914";
+
+  // Group same-day milestones that have one hdb and one pvt
+  var rows=[];
+  var i=0;
+  while(i<milestones.length){
+    var m=milestones[i];
+    // Check if next milestone is on the same date and opposite track
+    if(i+1<milestones.length){
+      var n=milestones[i+1];
+      if(fmtS(m.date)===fmtS(n.date)&&m.track!=="both"&&n.track!=="both"&&m.track!==n.track){
+        // Pair them: hdb on left, pvt on right
+        var hdbM=m.track==="hdb"?m:n;
+        var pvtM=m.track==="hdb"?n:m;
+        rows.push({type:"pair",hdb:hdbM,pvt:pvtM,date:m.date});
+        i+=2;continue;
+      }
+    }
+    rows.push({type:"single",m:m,date:m.date});
+    i++;
+  }
+
+  function renderCard(m,align){
+    var isBoth=m.track==="both";
+    var isHdb=m.track==="hdb";
+    var color=isBoth?both:isHdb?C.blue:C.orange;
+    var bgColor=isBoth?bothLight:isHdb?C.blueLight:C.orangeLight;
+    var darkColor=isBoth?bothDark:isHdb?C.blueDark:C.orangeDark;
+    var borderCol=isBoth?"linear-gradient(135deg,"+C.blue+","+C.orange+")":color+"33";
+    return(
+      <div style={{display:"inline-block",background:isBoth?bothLight:bgColor,border:isBoth?"2px solid "+both+"55":"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:align,maxWidth:"100%"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:align==="right"?"flex-end":"flex-start",marginBottom:3}}>
+          {align==="right"&&<span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>}
+          <span style={{fontSize:14}}>{m.icon}</span>
+          {align!=="right"&&<span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>}
+          {isBoth&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:10,background:both,color:"#fff"}}>BOTH</span>}
+        </div>
+        <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
+        <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
+      </div>
+    );
+  }
+
   return(
     <div style={{position:"relative"}}>
       <div style={{position:"absolute",left:"50%",top:0,bottom:0,width:2,background:C.grey200,transform:"translateX(-50%)",zIndex:0}}/>
-      {milestones.map(function(m,i){
+      {rows.map(function(row,ri){
+        if(row.type==="pair"){
+          // Side by side: hdb left, pvt right
+          return(
+            <div key={ri} className="fishbone-row" style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 40px 1fr",gap:0,alignItems:"center",marginBottom:12,zIndex:1}}>
+              <div className="col-left" style={{textAlign:"right",paddingRight:12}}>{renderCard(row.hdb,"right")}</div>
+              <div style={{display:"flex",justifyContent:"center",alignItems:"center",position:"relative"}}>
+                <div style={{width:14,height:14,borderRadius:"50%",background:"#fff",border:"2.5px solid "+both,zIndex:2}}/>
+              </div>
+              <div className="col-right" style={{textAlign:"left",paddingLeft:12}}>
+                {renderCard(row.pvt,"left")}
+                <div className="fishbone-hdb-mobile" style={{display:"none"}}>{renderCard(row.hdb,"left")}</div>
+              </div>
+            </div>
+          );
+        }
+        var m=row.m;
+        var isBoth=m.track==="both";
         var isHdb=m.track==="hdb";
-        var color=isHdb?C.blue:C.orange;
-        var bgColor=isHdb?C.blueLight:C.orangeLight;
-        var darkColor=isHdb?C.blueDark:C.orangeDark;
+        var dotColor=isBoth?both:isHdb?C.blue:C.orange;
         return(
-          <div key={i} className="fishbone-row" style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 40px 1fr",gap:0,alignItems:"center",marginBottom:12,zIndex:1}}>
+          <div key={ri} className="fishbone-row" style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 40px 1fr",gap:0,alignItems:"center",marginBottom:12,zIndex:1}}>
             <div className="col-left" style={{textAlign:"right",paddingRight:12}}>
-              {isHdb&&(<div style={{display:"inline-block",background:bgColor,border:"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:"right",maxWidth:"100%"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginBottom:3}}>
-                  <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                  <span style={{fontSize:14}}>{m.icon}</span>
-                </div>
-                <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
-                <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
-              </div>)}
+              {(isHdb||isBoth)&&renderCard(m,"right")}
             </div>
             <div style={{display:"flex",justifyContent:"center",alignItems:"center",position:"relative"}}>
-              <div style={{width:14,height:14,borderRadius:"50%",background:"#fff",border:"2.5px solid "+color,zIndex:2}}/>
+              <div style={{width:14,height:14,borderRadius:"50%",background:"#fff",border:"2.5px solid "+dotColor,zIndex:2}}/>
             </div>
             <div className="col-right" style={{textAlign:"left",paddingLeft:12}}>
-              {!isHdb&&(<div style={{display:"inline-block",background:bgColor,border:"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:"left",maxWidth:"100%"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-start",marginBottom:3}}>
-                  <span style={{fontSize:14}}>{m.icon}</span>
-                  <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                </div>
-                <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
-                <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
-              </div>)}
+              {(!isHdb&&!isBoth)&&renderCard(m,"left")}
               <div className="fishbone-hdb-mobile" style={{display:"none"}}>
-                {isHdb&&(<div style={{background:bgColor,border:"1.5px solid "+color+"33",borderRadius:10,padding:"10px 14px",textAlign:"left"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                    <span style={{fontSize:14}}>{m.icon}</span>
-                    <span style={{fontSize:13,fontWeight:700,color:m.highlight?color:C.grey900}}>{m.label}</span>
-                    <span style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:10,background:"#fff",color:darkColor}}>HDB</span>
-                  </div>
-                  <div style={{fontSize:12,fontWeight:700,color:darkColor}}>{fmtS(m.date)}</div>
-                  <div style={{fontSize:11,color:C.grey500,marginTop:3,lineHeight:1.4}}>{m.note}</div>
-                </div>)}
+                {(isHdb||isBoth)&&renderCard(m,"left")}
               </div>
             </div>
           </div>
@@ -301,10 +337,10 @@ export default function UpgraderTimeline(){
         ms.push({date:buyEx,label:"Buy HDB: Exercise OTP",note:"Pay up to $4,000 · Both must use HDB loan",track:"pvt",icon:"✏️"});
         ms.push({date:sellRa,label:"Sell: Resale Application",note:hdbSubmission+"-day period from sell exercise",track:"hdb",icon:"📄"});
         ms.push({date:buyRa,label:"Buy: Resale Application (Contra) ⭐",note:"Same day as sell application · Within 7 days",track:"pvt",icon:"📄",highlight:true});
-        ms.push({date:contraAcceptance,label:"HDB Acceptance (Both)",note:"Within 28 working days · Processed concurrently",track:"hdb",icon:"✅"});
-        ms.push({date:contraEndorse,label:"HDB Endorsement (Both)",note:"~3 weeks after acceptance",track:"hdb",icon:"✍️"});
-        ms.push({date:contraApproval,label:"HDB Approval (Both)",note:"~2 weeks after endorsement",track:"hdb",icon:"🏛️"});
-        ms.push({date:contraCompletion,label:"Completion (Same Day) ⭐",note:"Both transactions complete together · Keys exchange",track:"hdb",icon:"🔑",highlight:true});
+        ms.push({date:contraAcceptance,label:"HDB Acceptance (Both)",note:"28 working days · Processed concurrently",track:"both",icon:"✅"});
+        ms.push({date:contraEndorse,label:"HDB Endorsement (Both)",note:"~3 weeks after acceptance",track:"both",icon:"✍️"});
+        ms.push({date:contraApproval,label:"HDB Approval (Both)",note:"~2 weeks after endorsement",track:"both",icon:"🏛️"});
+        ms.push({date:contraCompletion,label:"Completion (Same Day) ⭐",note:"Both transactions complete together · Keys exchange",track:"both",icon:"🔑",highlight:true});
         if(extension>0){ms.push({date:extEnd,label:"Extension Ends ("+extension+"m)",note:"Move out of old HDB · Extension only for selling flat",track:"hdb",icon:"🏡"})}
 
         ms.sort(function(a,b){return a.date-b.date});
@@ -614,9 +650,9 @@ export default function UpgraderTimeline(){
               </div>
               {t.bridgingLoanDays>0&&(<div style={{background:C.blueLight,border:"1px solid "+C.blue+"33",borderRadius:10,padding:"14px 18px",textAlign:"center"}}>
                 <div style={{fontSize:14,fontWeight:700,color:C.blueDark}}>{"💰"} Bridging Loan Period</div>
-                <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.type==="resale_hdb"&&t.buyCompletionS?t.buyCompletionS:t.pvtCompletionS)} &rarr; {fmtS(t.hdbCompletionS)} (HDB completion)</div>
+                <div style={{fontSize:12,color:C.blueDark,marginBottom:4}}>{fmtS(t.type==="new_ec"?t.ecTOP:t.type==="resale_hdb"&&t.buyCompletionS?t.buyCompletionS:t.pvtCompletionS)} ({t.type==="resale_hdb"?"buy completion":"get keys"}) &rarr; {fmtS(t.hdbCompletionS)} ({t.type==="resale_hdb"?"sell completion":"HDB completion"})</div>
                 <div style={{fontSize:15,fontWeight:700,color:C.blueDark,marginBottom:8}}>~{t.bridgingLoanDays} days (~{(t.bridgingLoanDays/30).toFixed(1)} months)</div>
-                <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:"1px solid "+C.blue+"22"}}>{"📌"} CPF refund: 7&ndash;14 working days after HDB Completion &rarr; est. by <strong>{fmtS(t.cpfRefundDate)}</strong></div>
+                <div style={{fontSize:12,color:C.grey500,paddingTop:8,borderTop:"1px solid "+C.blue+"22"}}>{"📌"} CPF refund: 7&ndash;14 working days after {t.type==="resale_hdb"?"Sell HDB":"HDB"} Completion &rarr; est. by <strong>{fmtS(t.cpfRefundDate)}</strong></div>
               </div>)}
             </div>)}
           </div>
