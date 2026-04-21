@@ -26,40 +26,73 @@ function parseGvizJson(text){
   return grid;
 }
 
-// Search for a label in the grid and return the value N columns to the right
-function findVal(grid,label,colsRight){
-  colsRight=colsRight||1;
-  for(var r=0;r<grid.length;r++){
-    for(var c=0;c<grid[r].length;c++){
-      var cell=grid[r][c];
-      if(!cell)continue;
+// Convert Excel-style cell ref like "L9" or "AA12" → {row, col} (0-indexed)
+function cellRef(ref){
+  var m=ref.match(/^([A-Z]+)(\d+)$/);if(!m)return null;
+  var letters=m[1];var row=parseInt(m[2],10)-1;
+  var col=0;for(var i=0;i<letters.length;i++){col=col*26+(letters.charCodeAt(i)-64)}
+  return{row:row,col:col-1};
+}
+
+// Get cell at Excel-style reference (e.g. "L9")
+function cellAt(grid,ref){
+  var rc=cellRef(ref);if(!rc)return null;
+  if(rc.row<0||rc.row>=grid.length)return null;
+  if(!grid[rc.row]||rc.col<0||rc.col>=grid[rc.row].length)return null;
+  return grid[rc.row][rc.col]||null;
+}
+
+// Scoped label search — restrict to a row/col range
+// opts: {minCol, maxCol, colsRight, minRow, maxRow, allowRow} defaults: cols 0..∞, right 1
+function findValInRange(grid,label,opts){
+  opts=opts||{};
+  var minCol=opts.minCol===undefined?0:opts.minCol;
+  var maxCol=opts.maxCol===undefined?999:opts.maxCol;
+  var minRow=opts.minRow===undefined?0:opts.minRow;
+  var maxRow=opts.maxRow===undefined?9999:opts.maxRow;
+  var colsRight=opts.colsRight||1;
+  for(var r=minRow;r<=maxRow&&r<grid.length;r++){
+    if(!grid[r])continue;
+    for(var c=minCol;c<=maxCol&&c<grid[r].length;c++){
+      var cell=grid[r][c];if(!cell)continue;
       var txt=cell.display||cell.f||String(cell.v||"");
-      if(txt&&txt.indexOf(label)>=0){
-        var target=c+colsRight;
-        if(target<grid[r].length&&grid[r][target]){
-          return grid[r][target];
-        }
-        // Try further right columns
-        for(var cc=c+1;cc<grid[r].length;cc++){
-          if(grid[r][cc]&&(grid[r][cc].v!==undefined&&grid[r][cc].v!=="")){
-            colsRight--;
-            if(colsRight<=0)return grid[r][cc];
+      if(txt&&txt.toLowerCase().indexOf(label.toLowerCase())>=0){
+        // Walk right, skipping empty cells, until we've consumed colsRight non-empty cells
+        var consumed=0;
+        for(var cc=c+1;cc<grid[r].length&&cc<=maxCol+colsRight+5;cc++){
+          var nc=grid[r][cc];
+          if(nc&&(nc.v!==undefined&&nc.v!=="")){
+            consumed++;
+            if(consumed>=colsRight)return nc;
           }
         }
+        // Fallback: return cell at c+colsRight if it exists
+        var t=c+colsRight;
+        if(t<grid[r].length)return grid[r][t];
       }
     }
   }
   return null;
 }
 
-// Find all values to the right of a label (for multi-column data like Sean/Steph/Combined)
-function findVals(grid,label){
-  for(var r=0;r<grid.length;r++){
-    for(var c=0;c<grid[r].length;c++){
-      var cell=grid[r][c];
-      if(!cell)continue;
+// Simple wrapper — backward compat
+function findVal(grid,label,colsRight){
+  return findValInRange(grid,label,{colsRight:colsRight||1});
+}
+
+// Collect non-empty values to the right of a label (first match only)
+function findValsInRange(grid,label,opts){
+  opts=opts||{};
+  var minCol=opts.minCol===undefined?0:opts.minCol;
+  var maxCol=opts.maxCol===undefined?999:opts.maxCol;
+  var minRow=opts.minRow===undefined?0:opts.minRow;
+  var maxRow=opts.maxRow===undefined?9999:opts.maxRow;
+  for(var r=minRow;r<=maxRow&&r<grid.length;r++){
+    if(!grid[r])continue;
+    for(var c=minCol;c<=maxCol&&c<grid[r].length;c++){
+      var cell=grid[r][c];if(!cell)continue;
       var txt=cell.display||"";
-      if(txt&&txt.indexOf(label)>=0){
+      if(txt&&txt.toLowerCase().indexOf(label.toLowerCase())>=0){
         var vals=[];
         for(var cc=c+1;cc<grid[r].length;cc++){
           if(grid[r][cc]&&grid[r][cc].v!==undefined&&grid[r][cc].v!==""){
@@ -73,83 +106,101 @@ function findVals(grid,label){
   return [];
 }
 
+function findVals(grid,label){return findValsInRange(grid,label,{})}
+
 function getNum(cell){if(!cell)return 0;var v=cell.v;if(typeof v==="number")return v;var s=String(cell.f||cell.v||"").replace(/[$,%\s()]/g,"");var n=parseFloat(s);return isNaN(n)?0:n}
 function getStr(cell){if(!cell)return"";return cell.f||String(cell.v||"")}
 
 function parseProfile(grid){
-  // Client names: on the "Borrowers Details" row
-  var borrowerVals=findVals(grid,"Borrowers Details");
-  var clientName1=borrowerVals[0]?getStr(borrowerVals[0]):"";
-  var clientName2=borrowerVals[1]?getStr(borrowerVals[1]):"";
+  // ─── CONFIRMED CELL ADDRESSES (from Jackie's sheet layout) ───
+  // Client names at D7 and F7 — confirmed
+  var clientName1=getStr(cellAt(grid,"D7"));
+  var clientName2=getStr(cellAt(grid,"F7"));
+  // Fallback: search for "Specially prepared for" row if D7/F7 empty
+  if(!clientName1){
+    var spCell=findVal(grid,"Specially prepared for",1);
+    if(spCell){
+      var spText=getStr(spCell);
+      // Might contain "Sean & Stephanie" — split on & or "and"
+      var parts=spText.split(/\s*[&]\s*|\s+and\s+/i);
+      clientName1=parts[0]||"";
+      clientName2=parts[1]||"";
+    }
+  }
 
-  // Ages
-  var ageVals=findVals(grid,"Age");
+  // Property Address at K8 — confirmed
+  var propertyAddress=getStr(cellAt(grid,"K8"));
+
+  // Target Selling Price at L9, Outstanding Loan at L10, CPF Refund at L19 — confirmed
+  var sellingPrice=getNum(cellAt(grid,"L9"));
+  var outstandingLoan=Math.abs(getNum(cellAt(grid,"L10")));
+  var cpfRefund=Math.abs(getNum(cellAt(grid,"L19")));
+
+  // Agent name at L36, CEA number at L38 — confirmed
+  var agentName=getStr(cellAt(grid,"L36"));
+  var resNum=getStr(cellAt(grid,"L38"));
+
+  // ─── BORROWER ROWS — restricted column band (left side of profile tab) ───
+  // Borrower columns are typically D (3) and F (5) — limit search to col range 0..7
+  var borrowerBand={minCol:0,maxCol:7};
+
+  // Ages — search within borrower band only
+  var ageVals=findValsInRange(grid,"Age",borrowerBand);
   var b1Age=ageVals[0]?getStr(ageVals[0]):"";
   var b2Age=ageVals[1]?getStr(ageVals[1]):"";
 
-  // Property Address
-  var addrCell=findVal(grid,"Property Address",1);
-  var propertyAddress=addrCell?getStr(addrCell):"";
-
-  // Selling Price
-  var sellCell=findVal(grid,"Selling Price",1);
-  var sellingPrice=sellCell?getNum(sellCell):0;
-
-  // Outstanding loan
-  var loanCell=findVal(grid,"Less outstanding loan",1);
-  var outstandingLoan=loanCell?Math.abs(getNum(loanCell)):0;
-
-  // Employment type
-  var empVals=findVals(grid,"Employment Type");
+  // Employment type — restrict to borrower band (avoids hitting a later section)
+  var empVals=findValsInRange(grid,"Employment Type",borrowerBand);
   var b1Emp=empVals[0]?getStr(empVals[0]):"";
   var b2Emp=empVals[1]?getStr(empVals[1]):"";
 
-  // Total income
-  var incVals=findVals(grid,"Total income");
+  // Total income — restrict to borrower band
+  var incVals=findValsInRange(grid,"Total income",borrowerBand);
   var b1Inc=incVals[0]?getNum(incVals[0]):0;
   var b2Inc=incVals[1]?getNum(incVals[1]):0;
 
-  // CPF Usage total
-  var cpfVals=findVals(grid,"Total CPF Usage");
-  var cpfRefund=cpfVals.length>0?getNum(cpfVals[cpfVals.length-1]):0;
+  // Property Type — restrict to top-of-sheet band (before row 12)
+  var propTypeCell=findValInRange(grid,"Property Type",{minRow:0,maxRow:11,colsRight:1});
+  var propType=propTypeCell?getStr(propTypeCell):"";
 
-  // Agent
-  var agentVals=findVals(grid,"Agent (incl GST)");
-  var agentPct=agentVals[0]?getStr(agentVals[0]):"2%";
-  var agentFee=agentVals[1]?getNum(agentVals[1]):0;
+  // ─── FIGURES IN COLUMN L (index 11) — scoped search in right column ───
+  // Net Cash Proceeds / Total Available OA / Total Cash+CPF / Max Loan / Max LTV / Tenure / Stress test
+  var rightBand={minCol:0,maxCol:11};
 
-  // Net Cash Proceeds
-  var netCashVals=findVals(grid,"Net Cash Proceeds");
+  var netCashVals=findValsInRange(grid,"Net Cash Proceeds",rightBand);
   var netCash=netCashVals.length>0?getNum(netCashVals[netCashVals.length-1]):0;
 
-  // Total Available OA (combined = last value)
-  var oaVals=findVals(grid,"Total Available OA");
+  var oaVals=findValsInRange(grid,"Total Available OA",rightBand);
   var cpfOACombined=oaVals.length>0?getNum(oaVals[oaVals.length-1]):0;
 
-  // Total Cash + CPF Available
-  var totalVals=findVals(grid,"Total Cash + CPF Available");
+  var totalVals=findValsInRange(grid,"Total Cash + CPF",rightBand);
   var totalFunds=totalVals.length>0?getNum(totalVals[totalVals.length-1]):0;
 
-  // Max Loan quantum (combined = last value)
-  var maxLoanVals=findVals(grid,"Max Loan quantum");
+  var maxLoanVals=findValsInRange(grid,"Max Loan quantum",rightBand);
   var maxLoan=maxLoanVals.length>0?getNum(maxLoanVals[maxLoanVals.length-1]):0;
 
-  // Max Loan tenure
-  var tenureVals=findVals(grid,"Max Loan tenure");
-  var maxTenure=tenureVals[0]?getNum(tenureVals[0]):22;
+  var tenureVals=findValsInRange(grid,"Max Loan tenure",rightBand);
+  var maxTenure=tenureVals.length>0?getNum(tenureVals[0]):22;
 
-  // Max LTV
-  var ltvVals=findVals(grid,"Max Loan to value");
-  var maxLTV=ltvVals[0]?getStr(ltvVals[0]):"75%";
+  var ltvVals=findValsInRange(grid,"Max Loan to value",rightBand);
+  var maxLTV=ltvVals.length>0?getStr(ltvVals[0]):"75%";
 
-  // Stress test
-  var stressCell=findVal(grid,"Stress Test Interest",1);
+  var stressCell=findValInRange(grid,"Stress Test Interest",rightBand);
   var stressRate=stressCell?getStr(stressCell):"4%";
 
-  // Agent details
-  var agentNameCell=findVal(grid,"Prepared by",1);
-  var mobileCell=findVal(grid,"Mobile Number",1);
-  var resCell=findVal(grid,"RES Number",1);
+  // Agent fee (percent + dollar amount) — search the Sale Proceeds section (rows 10-25)
+  // Use specific labels to avoid matching the "Agent Name" cell at L36
+  var agentFeeVals=findValsInRange(grid,"Agent (incl",{minRow:9,maxRow:25,maxCol:11});
+  if(agentFeeVals.length===0)agentFeeVals=findValsInRange(grid,"Agent Fee",{minRow:9,maxRow:25,maxCol:11});
+  if(agentFeeVals.length===0)agentFeeVals=findValsInRange(grid,"Agent",{minRow:9,maxRow:25,maxCol:11});
+  var agentPct=agentFeeVals[0]?getStr(agentFeeVals[0]):"2%";
+  var agentFee=agentFeeVals[1]?Math.abs(getNum(agentFeeVals[1])):(agentFeeVals[0]?Math.abs(getNum(agentFeeVals[0])):0);
+
+  // Mobile number — search near the agent section (rows 36-42)
+  var mobileCell=findValInRange(grid,"Mobile",{minRow:36,maxRow:42,maxCol:11});
+  var mobile=mobileCell?getStr(mobileCell):"";
+
+  // Date prepared — near the top or agent footer
   var dateCell=findVal(grid,"Date Prepared",1);
   if(!dateCell)dateCell=findVal(grid,"Date",1);
 
@@ -159,47 +210,76 @@ function parseProfile(grid){
     b1Age:b1Age,b2Age:b2Age,b1Emp:b1Emp,b2Emp:b2Emp,b1Inc:b1Inc,b2Inc:b2Inc,
     cpfRefund:cpfRefund,agentPct:agentPct,agentFee:agentFee,netCash:netCash,
     cpfOACombined:cpfOACombined,totalFunds:totalFunds,maxLoan:maxLoan,maxTenure:maxTenure,
-    stressRate:stressRate,agentName:agentNameCell?getStr(agentNameCell):"",
-    mobile:mobileCell?getStr(mobileCell):"",resNum:resCell?getStr(resCell):"",
-    datePrepared:dateCell?getStr(dateCell):"",maxLTV:maxLTV,
-    propType:findVal(grid,"Property Type",1)?getStr(findVal(grid,"Property Type",1)):"",
+    stressRate:stressRate,agentName:agentName,mobile:mobile,resNum:resNum,
+    datePrepared:dateCell?getStr(dateCell):"",maxLTV:maxLTV,propType:propType,
   }
 }
 
 function parseScenario(grid){
-  var priceVals=findVals(grid,"Purchase price");
+  // Scenario tab has LEFT side (cols B-L, idx 1-11) for purchase/loan/instalment
+  // and RIGHT side (cols N-R, idx 13-17) for "Remaining Balance" section
+  var LEFT={minCol:0,maxCol:11};
+  var RIGHT={minCol:12,maxCol:20};
+
+  // ─── LEFT BAND: Purchase / Loan / Instalment / Pledging ───
+  var priceVals=findValsInRange(grid,"Purchase price",LEFT);
   var price=priceVals.length>0?getNum(priceVals[priceVals.length-1]):0;
-  var ltvVals2=findVals(grid,"Loan To Value");
-  var ltvPct=ltvVals2.length>0?getStr(ltvVals2[ltvVals2.length-2]||ltvVals2[0]):"75%";
-  var loanAmt=ltvVals2.length>0?getNum(ltvVals2[ltvVals2.length-1]):0;
-  var tenVals=findVals(grid,"Loan Tenure");
+
+  // "Loan To Value" row has: label | LTV% | loan $  — grab them from LEFT band
+  var ltvRow=findValsInRange(grid,"Loan To Value",LEFT);
+  var ltvPct="75%",loanAmt=0;
+  if(ltvRow.length>0){
+    // find the percentage cell and the dollar cell
+    for(var i=0;i<ltvRow.length;i++){
+      var v=ltvRow[i];
+      var fstr=String(v.f||"");
+      if(fstr.indexOf("%")>=0&&ltvPct==="75%"){ltvPct=getStr(v)}
+      else{var n=getNum(v);if(n>10000)loanAmt=n}
+    }
+    if(loanAmt===0&&ltvRow.length>=2)loanAmt=getNum(ltvRow[ltvRow.length-1]);
+  }
+
+  var tenVals=findValsInRange(grid,"Loan Tenure",LEFT);
   var tenure=tenVals.length>0?getNum(tenVals[tenVals.length-1]):22;
-  var intVals=findVals(grid,"Assume Interest");
+
+  var intVals=findValsInRange(grid,"Assume Interest",LEFT);
   var intRate=intVals.length>0?getStr(intVals[intVals.length-1]):"1.5%";
-  var instVals=findVals(grid,"Monthly Instalment");
+
+  // Monthly Instalment in LEFT band (there's also one in RIGHT — we take LEFT here for the headline number)
+  var instVals=findValsInRange(grid,"Monthly Instalment",LEFT);
   var instalment=instVals.length>0?getNum(instVals[instVals.length-1]):0;
-  var pledgeVals=findVals(grid,"Pledging of funds");
+
+  var pledgeVals=findValsInRange(grid,"Pledging of funds",LEFT);
   var pledging=pledgeVals.length>0?getNum(pledgeVals[pledgeVals.length-1]):0;
-  var unpledgeVals=findVals(grid,"Unpledge");
+
+  var unpledgeVals=findValsInRange(grid,"Unpledge",LEFT);
   var unpledge=unpledgeVals.length>0?getNum(unpledgeVals[unpledgeVals.length-1]):0;
-  // Right side values (Remaining Funds section)
-  var bsdVals=findVals(grid,"Less Stamp Duty");
-  var bsd=bsdVals.length>0?getNum(bsdVals[bsdVals.length-1]):0;
-  var cpfBalVals=findVals(grid,"CPF Balance");
-  // The CPF Balance row appears twice — get the one in "Remaining balance" section (last occurrence)
-  var cpfBal=0;for(var r=0;r<grid.length;r++){for(var c=0;c<grid[r].length;c++){var ct=grid[r][c];if(ct&&(ct.display||"").indexOf("CPF Balance")>=0){var rv=findVals(grid,"CPF Balance");if(rv.length>0)cpfBal=getNum(rv[rv.length-1])}}}
-  // Simpler: search for specific section labels
-  var cashBalVals=findVals(grid,"Cash Balance");
+
+  // ─── RIGHT BAND: Remaining Balance section ───
+  var bsdVals=findValsInRange(grid,"Less Stamp Duty",RIGHT);
+  if(bsdVals.length===0)bsdVals=findValsInRange(grid,"Buyer Stamp Duty",RIGHT);
+  if(bsdVals.length===0)bsdVals=findValsInRange(grid,"BSD",RIGHT);
+  var bsd=bsdVals.length>0?Math.abs(getNum(bsdVals[bsdVals.length-1])):0;
+
+  var cpfBalVals=findValsInRange(grid,"CPF Balance",RIGHT);
+  var cpfBal=cpfBalVals.length>0?getNum(cpfBalVals[cpfBalVals.length-1]):0;
+
+  var cashBalVals=findValsInRange(grid,"Cash Balance",RIGHT);
   var cashBal=cashBalVals.length>0?getNum(cashBalVals[cashBalVals.length-1]):0;
-  var cpfContribVals=findVals(grid,"CPF OA Distribut");
+
+  var cpfContribVals=findValsInRange(grid,"CPF OA Distribut",RIGHT);
+  if(cpfContribVals.length===0)cpfContribVals=findValsInRange(grid,"CPF OA Contrib",RIGHT);
   var cpfContrib=cpfContribVals.length>0?getNum(cpfContribVals[cpfContribVals.length-1]):0;
-  var cashRepVals=findVals(grid,"Cash Repayment");
+
+  var cashRepVals=findValsInRange(grid,"Cash Repayment",RIGHT);
   var cashRepay=cashRepVals.length>0?getNum(cashRepVals[cashRepVals.length-1]):0;
-  var monthsVals=findVals(grid,"Number of Months");
+
+  var monthsVals=findValsInRange(grid,"Number of Months",RIGHT);
   var reserveMonths=monthsVals.length>0?getNum(monthsVals[monthsVals.length-1]):0;
-  var yearsVals=findVals(grid,"Number of Years");
+
+  var yearsVals=findValsInRange(grid,"Number of Years",RIGHT);
   var reserveYears=yearsVals.length>0?getNum(yearsVals[yearsVals.length-1]):0;
-  // Total remaining
+
   var totalRemaining=cpfBal+cashBal;
 
   return{price:price,ltvPct:ltvPct,loanAmt:loanAmt,tenure:tenure,intRate:intRate,instalment:instalment,pledging:pledging,unpledge:unpledge,bsd:bsd,cpfBal:cpfBal,cashBal:cashBal,totalRemaining:totalRemaining,cpfContrib:cpfContrib,cashRepay:cashRepay,reserveMonths:reserveMonths,reserveYears:reserveYears}
@@ -257,8 +337,10 @@ export default function FinancialSummary(){
     ]).then(function(results){
       var pGrid=parseGvizJson(results[0]);var sGrid=parseGvizJson(results[1]);
       var p=parseProfile(pGrid);var s=parseScenario(sGrid);
-      // Debug
-      setDebugInfo({p:p,s:s,pRows:pGrid.length,sRows:sGrid.length});
+      // Field sources for debug (what cell/label each was pulled from)
+      var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K8",sellingPrice:"L9",outstandingLoan:"L10",cpfRefund:"L19",agentName:"L36",resNum:"L38",b1Age:"label:Age [c0-7]",b2Age:"label:Age [c0-7]",b1Emp:"label:Employment Type [c0-7]",b2Emp:"label:Employment Type [c0-7]",b1Inc:"label:Total income [c0-7]",b2Inc:"label:Total income [c0-7]",propType:"label:Property Type [r0-11]",netCash:"label:Net Cash Proceeds",cpfOACombined:"label:Total Available OA",totalFunds:"label:Total Cash + CPF",maxLoan:"label:Max Loan quantum",maxTenure:"label:Max Loan tenure",maxLTV:"label:Max Loan to value",stressRate:"label:Stress Test Interest",agentPct:"label:Agent",agentFee:"label:Agent",mobile:"label:Mobile [r36-42]",datePrepared:"label:Date"};
+      var sSrc={price:"label:Purchase price [LEFT]",loanAmt:"label:Loan To Value [LEFT]",ltvPct:"label:Loan To Value [LEFT]",tenure:"label:Loan Tenure [LEFT]",intRate:"label:Assume Interest [LEFT]",instalment:"label:Monthly Instalment [LEFT]",pledging:"label:Pledging of funds [LEFT]",unpledge:"label:Unpledge [LEFT]",bsd:"label:Less Stamp Duty [RIGHT]",cpfBal:"label:CPF Balance [RIGHT]",cashBal:"label:Cash Balance [RIGHT]",cpfContrib:"label:CPF OA Distribut [RIGHT]",cashRepay:"label:Cash Repayment [RIGHT]",reserveMonths:"label:Number of Months [RIGHT]",reserveYears:"label:Number of Years [RIGHT]",totalRemaining:"cpfBal+cashBal"};
+      setDebugInfo({p:p,s:s,pSrc:pSrc,sSrc:sSrc,pRows:pGrid.length,sRows:sGrid.length});
       setProfile(p);setScenarioData(s);setLoading(false);
     }).catch(function(err){setError(err.message);setLoading(false)});
   },[sheetUrl,scenario]);
@@ -294,14 +376,15 @@ export default function FinancialSummary(){
       </div>
       {profile&&scenarioData&&<div>
         {debugInfo&&<div className="no-print" style={{maxWidth:794,margin:"0 auto",padding:"0 20px 20px"}}><div style={{background:"#FFFBE6",borderRadius:12,border:"3px solid #F6A623",padding:16,fontSize:12,fontFamily:"monospace"}}>
-          <strong style={{color:"#B45309"}}>{"🔍 DEBUG (label-search)"}</strong>
+          <strong style={{color:"#B45309"}}>{"🔍 DEBUG — Profile (source shown after each field)"}</strong>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginTop:8}}>
-            {Object.keys(debugInfo.p).map(function(k,i){var v=debugInfo.p[k];return <div key={i} style={{padding:"3px 6px",background:v?"#F0FBF4":"#FEF2F2",borderRadius:3}}><strong>{k}</strong>: <span style={{color:v?"#276749":"#C53030"}}>{v===0?"0":v||"EMPTY"}</span></div>})}
+            {Object.keys(debugInfo.p).map(function(k,i){var v=debugInfo.p[k];var src=debugInfo.pSrc&&debugInfo.pSrc[k]?debugInfo.pSrc[k]:"";return <div key={i} style={{padding:"3px 6px",background:v?"#F0FBF4":"#FEF2F2",borderRadius:3}}><strong>{k}</strong>: <span style={{color:v?"#276749":"#C53030"}}>{v===0?"0":v||"EMPTY"}</span>{src&&<span style={{color:"#888",fontSize:10}}> [{src}]</span>}</div>})}
           </div>
-          <strong style={{color:"#B45309",marginTop:8,display:"block"}}>Scenario:</strong>
+          <strong style={{color:"#B45309",marginTop:8,display:"block"}}>Scenario tab (column-banded):</strong>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginTop:4}}>
-            {Object.keys(debugInfo.s).map(function(k,i){var v=debugInfo.s[k];return <div key={i} style={{padding:"3px 6px",background:v?"#F0FBF4":"#FEF2F2",borderRadius:3}}><strong>{k}</strong>: <span style={{color:v?"#276749":"#C53030"}}>{v===0?"0":v||"EMPTY"}</span></div>})}
+            {Object.keys(debugInfo.s).map(function(k,i){var v=debugInfo.s[k];var src=debugInfo.sSrc&&debugInfo.sSrc[k]?debugInfo.sSrc[k]:"";return <div key={i} style={{padding:"3px 6px",background:v?"#F0FBF4":"#FEF2F2",borderRadius:3}}><strong>{k}</strong>: <span style={{color:v?"#276749":"#C53030"}}>{v===0?"0":v||"EMPTY"}</span>{src&&<span style={{color:"#888",fontSize:10}}> [{src}]</span>}</div>})}
           </div>
+          <div style={{marginTop:8,color:"#888",fontSize:10}}>Profile rows: {debugInfo.pRows} · Scenario rows: {debugInfo.sRows}</div>
         </div></div>}
         <div className="no-print" style={{maxWidth:720,margin:"0 auto",padding:"0 20px 16px"}}><button onClick={function(){window.print()}} style={{padding:"10px 20px",background:C.navy,color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{"🖨 Print / Save PDF"}</button></div>
         <ReportView profile={profile} scenario={scenarioData} scenarioLabel={labelMap[scenario]}/>
