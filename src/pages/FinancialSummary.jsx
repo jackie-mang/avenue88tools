@@ -1,27 +1,97 @@
 import { useState, useCallback } from "react";
+import * as XLSX from "xlsx";
 
 var C={navy:"#1B3D72",navyLight:"#2B5299",accent:"#C9A84C",white:"#FFFFFF",bg:"#F7F8FA",text:"#1A202C",textMuted:"#4A5568",border:"#E2E8F0",greyTile:"#4A5568",lightBox:"#F7F8FA",blue:"#2B88D8",blueDark:"#1E6AB5",blueLight:"#E8F2FC",grey200:"#E5E7EB",grey500:"#6B7280",grey600:"#4B5563",grey900:"#111827"};
 
 function fmt$(n){if(n===null||n===undefined||isNaN(n))return"$0";var abs=Math.abs(Math.round(n));var s="$"+abs.toLocaleString();return n<0?"("+s+")":s}
-function extractSheetId(url){var m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);return m?m[1]:null}
 
-function parseGvizJson(text){
-  var match=text.match(/setResponse\(([\s\S]+)\);?$/);
-  if(!match)throw new Error("Invalid response");
-  var json=JSON.parse(match[1]);
-  if(!json.table||!json.table.rows)throw new Error("No data");
-  var rows=json.table.rows||[];
+// Parse .xlsx file (ArrayBuffer) into a grid of {v,f,display} cells, 1:1 with sheet rows/cols.
+// Sheet row N is at grid[N-1], sheet col A is at index 0.
+// Returns an object keyed by sheet name.
+function parseXlsx(arrayBuffer){
+  var wb=XLSX.read(arrayBuffer,{type:"array",cellFormula:false,cellDates:false});
+  var out={};
+  for(var name of wb.SheetNames){
+    var ws=wb.Sheets[name];
+    if(!ws||!ws["!ref"]){out[name]=[];continue}
+    var range=XLSX.utils.decode_range(ws["!ref"]);
+    var grid=[];
+    for(var r=0;r<=range.e.r;r++){
+      var row=[];
+      for(var c=0;c<=range.e.c;c++){
+        var addr=XLSX.utils.encode_cell({r:r,c:c});
+        var cell=ws[addr];
+        if(!cell||cell.v===undefined||cell.v===null||cell.v===""){row.push(null);continue}
+        // cell.v = raw value, cell.w = formatted display value, cell.t = type
+        var v=cell.v;var f=cell.w!==undefined?String(cell.w):String(v);
+        row.push({v:v,f:f,display:f});
+      }
+      grid.push(row);
+    }
+    // Apply merged ranges — populate the top-left cell value into all sub-cells
+    // so that looking up any cell in a merged range returns the value.
+    if(ws["!merges"]){
+      for(var m of ws["!merges"]){
+        var anchor=grid[m.s.r]&&grid[m.s.r][m.s.c];
+        if(!anchor)continue;
+        for(var rr=m.s.r;rr<=m.e.r;rr++){
+          for(var cc=m.s.c;cc<=m.e.c;cc++){
+            if(rr===m.s.r&&cc===m.s.c)continue;
+            if(!grid[rr])continue;
+            if(!grid[rr][cc])grid[rr][cc]=anchor;
+          }
+        }
+      }
+    }
+    out[name]=grid;
+  }
+  return out;
+}
+
+// Parse CSV text into a 2D grid of {v,f,display} cells.
+// gviz CSV output quotes values containing commas, so "$1,450,000" is one field, not three.
+// Unquoted numbers like 2000000 stay as numbers.
+function parseCsv(text){
+  if(!text||typeof text!=="string")return [];
+  var rows=[];
+  var row=[];
+  var field="";
+  var inQuotes=false;
+  var i=0,n=text.length;
+  while(i<n){
+    var ch=text[i];
+    if(inQuotes){
+      if(ch==='"'){
+        if(i+1<n&&text[i+1]==='"'){field+='"';i+=2;continue}
+        inQuotes=false;i++;continue;
+      }
+      field+=ch;i++;continue;
+    }
+    if(ch==='"'){inQuotes=true;i++;continue}
+    if(ch===","){row.push(field);field="";i++;continue}
+    if(ch==='\r'){i++;continue}
+    if(ch==='\n'){row.push(field);rows.push(row);row=[];field="";i++;continue}
+    field+=ch;i++;
+  }
+  // flush last field/row
+  if(field.length>0||row.length>0){row.push(field);rows.push(row)}
+  // Convert to cell objects
   var grid=[];
   for(var r=0;r<rows.length;r++){
-    var row=[];var cells=rows[r].c||[];
-    for(var c=0;c<cells.length;c++){
-      if(!cells[c]){row.push("");continue}
-      // Prefer formatted value for display, raw value for numbers
-      var fv=cells[c].f;
-      var rv=cells[c].v;
-      row.push({f:fv!==undefined&&fv!==null?String(fv):"",v:rv!==null&&rv!==undefined?rv:"",display:fv!==undefined&&fv!==null?String(fv):rv!==null&&rv!==undefined?String(rv):""});
+    var out=[];
+    for(var c=0;c<rows[r].length;c++){
+      var raw=rows[r][c];
+      if(raw===undefined||raw===null||raw===""){out.push(null);continue}
+      // Detect if it's a pure number (no comma, no $, no %) — keep as number
+      var asNum=parseFloat(raw);
+      var isPureNum=!isNaN(asNum)&&/^-?\d+(\.\d+)?$/.test(raw.trim());
+      out.push({
+        v:isPureNum?asNum:raw,
+        f:raw,
+        display:raw
+      });
     }
-    grid.push(row);
+    grid.push(out);
   }
   return grid;
 }
@@ -108,7 +178,19 @@ function findValsInRange(grid,label,opts){
 
 function findVals(grid,label){return findValsInRange(grid,label,{})}
 
-function getNum(cell){if(!cell)return 0;var v=cell.v;if(typeof v==="number")return v;var s=String(cell.f||cell.v||"").replace(/[$,%\s()]/g,"");var n=parseFloat(s);return isNaN(n)?0:n}
+function getNum(cell){
+  if(!cell)return 0;
+  var v=cell.v;
+  if(typeof v==="number")return v;
+  var raw=String(cell.f||cell.v||"").trim();
+  if(!raw)return 0;
+  // Handle accounting-style negatives "(350,954)" → -350954
+  var neg=/^\(.*\)$/.test(raw);
+  var s=raw.replace(/[$,%\s()]/g,"");
+  var n=parseFloat(s);
+  if(isNaN(n))return 0;
+  return neg?-n:n;
+}
 function getStr(cell){if(!cell)return"";return cell.f||String(cell.v||"")}
 // Format a cell as a percentage string. Handles both raw decimals (0.75) and pre-formatted ("75%")
 function getPct(cell){
@@ -152,104 +234,105 @@ function cellAtOffset(grid,ref,rowOffset){
   return grid[actualRow][rc.col]||null;
 }
 
+// Robust cell lookup: tries direct ref first, then falls back to finding the label
+// on the same sheet row and walking right N non-empty cells.
+// gviz sometimes drops string cells in columns auto-typed as numeric, so this
+// two-step lookup is necessary.
+function smartCell(grid,ref,rowOffset,labelOnRow,skipRight){
+  // Try direct ref
+  var direct=cellAtOffset(grid,ref,rowOffset);
+  if(direct&&(direct.v!==null&&direct.v!==undefined&&direct.v!=="")){
+    return direct;
+  }
+  // Fallback: find the label on the same sheet row and walk right
+  if(!labelOnRow)return direct;
+  var rc=cellRef(ref);if(!rc)return direct;
+  var targetRow=rc.row-rowOffset;
+  if(targetRow<0||targetRow>=grid.length||!grid[targetRow])return direct;
+  skipRight=skipRight||1;
+  // Locate the label in that row
+  for(var c=0;c<grid[targetRow].length;c++){
+    var cell=grid[targetRow][c];if(!cell)continue;
+    var txt=String(cell.display||cell.f||cell.v||"");
+    if(txt&&txt.toLowerCase().indexOf(labelOnRow.toLowerCase())>=0){
+      // Walk right, skipping empty cells
+      var consumed=0;
+      for(var cc=c+1;cc<grid[targetRow].length;cc++){
+        var nc=grid[targetRow][cc];
+        if(nc&&(nc.v!==undefined&&nc.v!==null&&nc.v!=="")){
+          consumed++;
+          if(consumed>=skipRight)return nc;
+        }
+      }
+      // Not found — walk right up to 30 cells and return any cell with a formatted string
+      for(var cc=c+1;cc<Math.min(grid[targetRow].length,c+30);cc++){
+        var nc=grid[targetRow][cc];
+        if(nc){
+          consumed++;
+          if(consumed>=skipRight)return nc;
+        }
+      }
+    }
+  }
+  return direct;
+}
+
 function parseProfile(grid){
-  // With headers=0 and range=A1:AZ60, the grid should be 1:1 with sheet rows.
-  // detectRowOffset is kept as safety — will be 0 in normal case.
-  var off=detectRowOffset(grid,"Borrowers Details",7);
-
-  function $(ref){return cellAtOffset(grid,ref,off)}
-
-  // ─── Client info (row 7) ───
-  var clientName1=getStr($("D7"));
-  var clientName2=getStr($("F7"));
-
-  // ─── Property Type (D6) ───
-  var propType=getStr($("D6"))||"Private Property";
-
-  // ─── Sale of Property (center section, cols J-L) ───
-  // Labels at J, values at L. Property Address at K8 (next to "Property Address:" in J8)
-  var propertyAddress=getStr($("K8"));
-  var sellingPrice=getNum($("L9"));
-  var outstandingLoan=Math.abs(getNum($("L10")));
-  var cpfRefund=Math.abs(getNum($("L19"))); // "Total CPF Usage"
-  var agentPct=getPct($("K21"))||"2%";
-  var agentFee=Math.abs(getNum($("L21")));
-  var netCash=getNum($("L27"));
-
-  // ─── Borrower details (Sean at col D, Stephanie at col F) ───
-  var b1Age=getStr($("D9"));
-  var b2Age=getStr($("F9"));
-  var b1Emp=getStr($("D15"));
-  var b2Emp=getStr($("F15"));
-  var b1Inc=getNum($("D19")); // "Total income"
-  var b2Inc=getNum($("F19"));
-
-  // ─── Available Funds / CPF / Cash (right section, cols O-T) ───
-  // Combined column is T (sheet cols O P Q R S T: label|Sean|Stephanie|Combined with gaps)
-  // Actually from Excel dump: P=Sean, R=Stephanie, T=Combined
-  var cpfOACombined=getNum($("T13"));  // Total Available OA Combined
-  var totalFunds=getNum($("T22"));     // Total Cash + CPF Available Combined
-
-  // ─── Max Loan section (Combined at H) ───
-  var maxLTV=getPct($("H26"))||"75%";  // stored as 0.75, formatted as "75%"
-  var maxTenure=getNum($("H27"))||22;
-  var maxLoan=getNum($("H30"));        // Max Loan quantum Combined (Private row 30)
-
-  // ─── Footer: agent info (col K, rows 34-39) ───
-  var stressRate=getPct($("K34"))||"4%";
-  var agentName=getStr($("K36"));      // Prepared by → Jackie
-  var mobile=getStr($("K37"));
-  var resNum=getStr($("K38"));
-  var datePrepared=getStr($("K39"));
+  // Excel upload: grid is 1:1 with sheet rows. No offset needed.
+  function $(ref){return cellAtOffset(grid,ref,0)}
 
   return{
-    clientName1:clientName1,clientName2:clientName2,propertyAddress:propertyAddress,
-    sellingPrice:sellingPrice,outstandingLoan:outstandingLoan,
-    b1Age:b1Age,b2Age:b2Age,b1Emp:b1Emp,b2Emp:b2Emp,b1Inc:b1Inc,b2Inc:b2Inc,
-    cpfRefund:cpfRefund,agentPct:agentPct,agentFee:agentFee,netCash:netCash,
-    cpfOACombined:cpfOACombined,totalFunds:totalFunds,maxLoan:maxLoan,maxTenure:maxTenure,
-    stressRate:stressRate,agentName:agentName,mobile:mobile,resNum:resNum,
-    datePrepared:datePrepared,maxLTV:maxLTV,propType:propType,
-    _rowOffset:off
+    clientName1:getStr($("D7")),
+    clientName2:getStr($("F7")),
+    propType:getStr($("D6"))||"Private Property",
+    propertyAddress:getStr($("K8")),
+    sellingPrice:getNum($("L9")),
+    outstandingLoan:Math.abs(getNum($("L10"))),
+    cpfRefund:Math.abs(getNum($("L19"))),
+    agentPct:getPct($("K21"))||"2%",
+    agentFee:Math.abs(getNum($("L21"))),
+    netCash:getNum($("L27")),
+    b1Age:getStr($("D9")),b2Age:getStr($("F9")),
+    b1Emp:getStr($("D15")),b2Emp:getStr($("F15")),
+    b1Inc:getNum($("D19")),b2Inc:getNum($("F19")),
+    cpfOACombined:getNum($("T13")),
+    totalFunds:getNum($("T22")),
+    maxLTV:getPct($("H26"))||"75%",
+    maxTenure:getNum($("H27"))||22,
+    maxLoan:getNum($("H30")),
+    stressRate:getPct($("K34"))||"4%",
+    agentName:getStr($("K36")),
+    mobile:getStr($("K37")),
+    resNum:getStr($("K38")),
+    datePrepared:getStr($("K39"))
   }
 }
 
 function parseScenario(grid){
-  // Landmark "Loan Affordaibility" is at sheet row 7 col C (note: typo in sheet preserved)
-  // With headers=0&range=A1 this should also be at grid idx 6, so offset=0
-  var off=detectRowOffset(grid,"Loan Affordaibility",7);
-  function $(ref){return cellAtOffset(grid,ref,off)}
+  // Excel upload: grid is 1:1 with sheet rows. No offset needed.
+  function $(ref){return cellAtOffset(grid,ref,0)}
 
-  // ─── Purchase Structure (Combined column = K) ───
-  var price=getNum($("K18"));           // Purchase price Combined = 2,000,000
-  var ltvPct=getPct($("J23"))||"75%";   // LTV % Combined = 75%
-  var loanAmt=getNum($("K23"));         // Loan $ Combined = 1,500,000
-
-  // ─── Loan details (Combined at K) ───
-  var tenure=getNum($("K28"));          // Loan Tenure = 22
-  var intRate=getPct($("K29"))||"1.5%"; // Assume Interest = 1.5%
-  var instalment=getNum($("K30"));      // Monthly Instalment = 6,674
-
-  // ─── Pledging / Unpledge ───
-  var pledging=getNum($("K33"));        // 199,603
-  var unpledge=getNum($("K34"));        // 665,343
-
-  // ─── Remaining balance (RIGHT side, Combined = R) ───
-  var bsd=Math.abs(getNum($("R23")));   // 69,600
-  var cpfBal=getNum($("R31"));          // 138,074
-  var cashBal=getNum($("R32"));         // 229,136
-  var totalRemaining=getNum($("R33")); // 367,210
+  var cpfBal=getNum($("R31"));
+  var cashBal=getNum($("R32"));
+  var totalRemaining=getNum($("R33"));
   if(!totalRemaining)totalRemaining=cpfBal+cashBal;
 
-  // ─── Monthly breakdown (bottom right) ───
-  var cpfContrib=getNum($("R37"));      // CPF OA Distributon = 1,680
-  var cashRepay=getNum($("R38"));       // Cash Repayment = 4,994
-
-  // ─── Reserves ───
-  var reserveMonths=getNum($("R41"));   // 73.5
-  var reserveYears=getNum($("R42"));    // 6.1
-
-  return{price:price,ltvPct:ltvPct,loanAmt:loanAmt,tenure:tenure,intRate:intRate,instalment:instalment,pledging:pledging,unpledge:unpledge,bsd:bsd,cpfBal:cpfBal,cashBal:cashBal,totalRemaining:totalRemaining,cpfContrib:cpfContrib,cashRepay:cashRepay,reserveMonths:reserveMonths,reserveYears:reserveYears,_rowOffset:off}
+  return{
+    price:getNum($("K18")),
+    ltvPct:getPct($("J23"))||"75%",
+    loanAmt:getNum($("K23")),
+    tenure:getNum($("K28")),
+    intRate:getPct($("K29"))||"1.5%",
+    instalment:getNum($("K30")),
+    pledging:getNum($("K33")),
+    unpledge:getNum($("K34")),
+    bsd:Math.abs(getNum($("R23"))),
+    cpfBal:cpfBal,cashBal:cashBal,totalRemaining:totalRemaining,
+    cpfContrib:getNum($("R37")),
+    cashRepay:getNum($("R38")),
+    reserveMonths:getNum($("R41")),
+    reserveYears:getNum($("R42"))
+  }
 }
 
 function ReportView(props){
@@ -290,27 +373,34 @@ function ReportView(props){
 }
 
 export default function FinancialSummary(){
-  var [sheetUrl,setSheetUrl]=useState("");var [scenario,setScenario]=useState("private");var [loading,setLoading]=useState(false);var [error,setError]=useState("");var [profile,setProfile]=useState(null);var [scenarioData,setScenarioData]=useState(null);var [debugInfo,setDebugInfo]=useState(null);
+  var [file,setFile]=useState(null);var [scenario,setScenario]=useState("private");var [loading,setLoading]=useState(false);var [error,setError]=useState("");var [profile,setProfile]=useState(null);var [scenarioData,setScenarioData]=useState(null);var [debugInfo,setDebugInfo]=useState(null);
   var tabMap={private:"2A. Buy Private",hdb:"2B. HDB",ec:"2C. Buy EC"};
   var labelMap={private:"Private Property",hdb:"HDB",ec:"Executive Condominium"};
 
-  var fetchData=useCallback(function(){
-    var sheetId=extractSheetId(sheetUrl);if(!sheetId){setError("Invalid URL.");return}
+  var processFile=useCallback(function(){
+    if(!file){setError("Please upload an Excel file.");return}
     setLoading(true);setError("");setProfile(null);setScenarioData(null);setDebugInfo(null);
-    var baseUrl="https://docs.google.com/spreadsheets/d/"+sheetId+"/gviz/tq?tqx=out:json&headers=0&range=A1:AZ60&sheet=";
-    Promise.all([
-      fetch(baseUrl+encodeURIComponent("1. Profile Affordability")).then(function(r){if(!r.ok)throw new Error("Cannot access. Share as 'Anyone with link'.");return r.text()}),
-      fetch(baseUrl+encodeURIComponent(tabMap[scenario])).then(function(r){if(!r.ok)throw new Error("Tab not found.");return r.text()})
-    ]).then(function(results){
-      var pGrid=parseGvizJson(results[0]);var sGrid=parseGvizJson(results[1]);
-      var p=parseProfile(pGrid);var s=parseScenario(sGrid);
-      // Field sources for debug — all direct cell refs now
-      var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K8",sellingPrice:"L9",outstandingLoan:"L10",cpfRefund:"L19",agentPct:"K21",agentFee:"L21",netCash:"L27",b1Age:"D9",b2Age:"F9",b1Emp:"D15",b2Emp:"F15",b1Inc:"D19",b2Inc:"F19",cpfOACombined:"T13",totalFunds:"T22",maxLoan:"H30",maxLTV:"H26",maxTenure:"H27",stressRate:"K34",agentName:"K36",mobile:"K37",resNum:"K38",datePrepared:"K39",propType:"D6",_rowOffset:"(offset)"};
-      var sSrc={price:"K18",ltvPct:"J23",loanAmt:"K23",tenure:"K28",intRate:"K29",instalment:"K30",pledging:"K33",unpledge:"K34",bsd:"R23",cpfBal:"R31",cashBal:"R32",totalRemaining:"R33",cpfContrib:"R37",cashRepay:"R38",reserveMonths:"R41",reserveYears:"R42",_rowOffset:"(offset)"};
-      setDebugInfo({p:p,s:s,pSrc:pSrc,sSrc:sSrc,pRows:pGrid.length,sRows:sGrid.length});
-      setProfile(p);setScenarioData(s);setLoading(false);
-    }).catch(function(err){setError(err.message);setLoading(false)});
-  },[sheetUrl,scenario]);
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var workbook=parseXlsx(e.target.result);
+        var profileName="1. Profile Affordability";
+        var scenarioName=tabMap[scenario];
+        var pGrid=workbook[profileName];
+        var sGrid=workbook[scenarioName];
+        if(!pGrid){throw new Error("Tab '"+profileName+"' not found in file.")}
+        if(!sGrid){throw new Error("Tab '"+scenarioName+"' not found in file.")}
+        var p=parseProfile(pGrid);
+        var s=parseScenario(sGrid);
+        var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K8",sellingPrice:"L9",outstandingLoan:"L10",cpfRefund:"L19",agentPct:"K21",agentFee:"L21",netCash:"L27",b1Age:"D9",b2Age:"F9",b1Emp:"D15",b2Emp:"F15",b1Inc:"D19",b2Inc:"F19",cpfOACombined:"T13",totalFunds:"T22",maxLoan:"H30",maxLTV:"H26",maxTenure:"H27",stressRate:"K34",agentName:"K36",mobile:"K37",resNum:"K38",datePrepared:"K39",propType:"D6"};
+        var sSrc={price:"K18",ltvPct:"J23",loanAmt:"K23",tenure:"K28",intRate:"K29",instalment:"K30",pledging:"K33",unpledge:"K34",bsd:"R23",cpfBal:"R31",cashBal:"R32",totalRemaining:"R33",cpfContrib:"R37",cashRepay:"R38",reserveMonths:"R41",reserveYears:"R42"};
+        setDebugInfo({p:p,s:s,pSrc:pSrc,sSrc:sSrc,pRows:pGrid.length,sRows:sGrid.length});
+        setProfile(p);setScenarioData(s);setLoading(false);
+      }catch(err){setError("Could not parse file: "+err.message);setLoading(false)}
+    };
+    reader.onerror=function(){setError("Error reading file.");setLoading(false)};
+    reader.readAsArrayBuffer(file);
+  },[file,scenario]);
 
   return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',sans-serif",color:C.grey900}}>
@@ -332,11 +422,17 @@ export default function FinancialSummary(){
       <div style={{maxWidth:720,margin:"0 auto",padding:"36px 20px"}}>
         <div className="no-print" style={{background:"#fff",borderRadius:16,border:"1px solid "+C.grey200,padding:28,marginBottom:32}}>
           <h3 style={{fontSize:18,fontWeight:700,marginBottom:6}}>{"📊 Generate Client Summary"}</h3>
-          <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Paste your Google Sheet URL and select the scenario.</p>
+          <p style={{fontSize:13,color:C.grey500,marginBottom:20}}>Upload your ASM Calculator Excel file (.xlsx) and select the scenario.</p>
           <div style={{display:"grid",gap:16}}>
-            <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Google Sheet URL *</label><input className="fi" placeholder="https://docs.google.com/spreadsheets/d/..." value={sheetUrl} onChange={function(e){setSheetUrl(e.target.value)}}/><div style={{fontSize:11,color:C.grey500,marginTop:4}}>Sheet must be shared as "Anyone with the link can view"</div></div>
+            <div>
+              <label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Calculator File (.xlsx) *</label>
+              <div style={{border:"1.5px dashed "+C.grey200,borderRadius:10,padding:20,textAlign:"center",background:"#FAFBFC",cursor:"pointer",position:"relative"}} onClick={function(){document.getElementById("xlsxInput").click()}}>
+                <input id="xlsxInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style={{display:"none"}} onChange={function(e){var f=e.target.files&&e.target.files[0];if(f){setFile(f);setError("")}}}/>
+                {file?<div><div style={{fontSize:14,fontWeight:600,color:C.navy}}>{"📎 "+file.name}</div><div style={{fontSize:11,color:C.grey500,marginTop:4}}>{(file.size/1024).toFixed(0)} KB · Click to change</div></div>:<div><div style={{fontSize:14,color:C.grey600,fontWeight:500}}>Click to upload .xlsx file</div><div style={{fontSize:11,color:C.grey500,marginTop:4}}>In Google Sheets: File → Download → Microsoft Excel (.xlsx)</div></div>}
+              </div>
+            </div>
             <div><label style={{fontSize:13,fontWeight:600,color:C.grey600,marginBottom:6,display:"block"}}>Scenario *</label><select className="fi" value={scenario} onChange={function(e){setScenario(e.target.value)}}><option value="private">Buy Private Property</option><option value="hdb">Buy HDB</option><option value="ec">Buy Executive Condominium</option></select></div>
-            <button onClick={fetchData} disabled={!sheetUrl||loading} style={{width:"100%",padding:16,background:(!sheetUrl||loading)?"#D1D5DB":C.navy,color:"#fff",border:"none",borderRadius:10,fontSize:16,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:(!sheetUrl||loading)?"not-allowed":"pointer"}}>{loading?<><span className="spinner"/>Loading...</>:"Generate Summary \u2192"}</button>
+            <button onClick={processFile} disabled={!file||loading} style={{width:"100%",padding:16,background:(!file||loading)?"#D1D5DB":C.navy,color:"#fff",border:"none",borderRadius:10,fontSize:16,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:(!file||loading)?"not-allowed":"pointer"}}>{loading?<><span className="spinner"/>Processing...</>:"Generate Summary \u2192"}</button>
           </div>
         </div>
         {error&&<div style={{padding:"16px 20px",background:"#FEF2F2",borderRadius:10,border:"1px solid #FECACA",marginBottom:24}}><p style={{fontSize:14,color:"#DC2626"}}>{error}</p></div>}
