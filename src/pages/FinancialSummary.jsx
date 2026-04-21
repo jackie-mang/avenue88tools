@@ -110,6 +110,19 @@ function findVals(grid,label){return findValsInRange(grid,label,{})}
 
 function getNum(cell){if(!cell)return 0;var v=cell.v;if(typeof v==="number")return v;var s=String(cell.f||cell.v||"").replace(/[$,%\s()]/g,"");var n=parseFloat(s);return isNaN(n)?0:n}
 function getStr(cell){if(!cell)return"";return cell.f||String(cell.v||"")}
+// Format a cell as a percentage string. Handles both raw decimals (0.75) and pre-formatted ("75%")
+function getPct(cell){
+  if(!cell)return"";
+  var f=cell.f;
+  if(f&&String(f).indexOf("%")>=0)return String(f);
+  var v=cell.v;
+  if(typeof v==="number"){
+    // If v is between 0 and 1, treat as decimal fraction; otherwise as percentage integer
+    if(v>0&&v<=1)return (v*100).toFixed(v*100%1===0?0:2).replace(/\.00$/,"")+"%";
+    return v+"%";
+  }
+  return String(f||v||"");
+}
 
 // Auto-detect row offset by finding a known landmark label.
 // gviz JSON may skip leading empty rows, so sheet row N != grid index N-1.
@@ -140,53 +153,54 @@ function cellAtOffset(grid,ref,rowOffset){
 }
 
 function parseProfile(grid){
-  // ─── Detect row offset using "Borrowers Details" landmark (expected at sheet row 7) ───
+  // With headers=0 and range=A1:AZ60, the grid should be 1:1 with sheet rows.
+  // detectRowOffset is kept as safety — will be 0 in normal case.
   var off=detectRowOffset(grid,"Borrowers Details",7);
 
-  // Shorthand: get cell at a sheet ref
   function $(ref){return cellAtOffset(grid,ref,off)}
 
-  // ─── Client info ───
+  // ─── Client info (row 7) ───
   var clientName1=getStr($("D7"));
   var clientName2=getStr($("F7"));
 
-  // ─── Property section (Sale of Property, cols J-L) ───
-  // Property Address is at K7 (or merged K7:L7)
-  var propertyAddress=getStr($("K7"))||getStr($("L7"));
-  var sellingPrice=getNum($("L8"));
-  var outstandingLoan=Math.abs(getNum($("L9")));
+  // ─── Property Type (D6) ───
+  var propType=getStr($("D6"))||"Private Property";
+
+  // ─── Sale of Property (center section, cols J-L) ───
+  // Labels at J, values at L. Property Address at K8 (next to "Property Address:" in J8)
+  var propertyAddress=getStr($("K8"));
+  var sellingPrice=getNum($("L9"));
+  var outstandingLoan=Math.abs(getNum($("L10")));
   var cpfRefund=Math.abs(getNum($("L19"))); // "Total CPF Usage"
-  var agentPct=getStr($("K21"))||"2%";
+  var agentPct=getPct($("K21"))||"2%";
   var agentFee=Math.abs(getNum($("L21")));
   var netCash=getNum($("L27"));
 
-  // ─── Borrower details (cols D & F) ───
+  // ─── Borrower details (Sean at col D, Stephanie at col F) ───
   var b1Age=getStr($("D9"));
   var b2Age=getStr($("F9"));
   var b1Emp=getStr($("D15"));
   var b2Emp=getStr($("F15"));
-  var b1Inc=getNum($("D19"));
+  var b1Inc=getNum($("D19")); // "Total income"
   var b2Inc=getNum($("F19"));
 
-  // ─── Available Funds (right side, cols O-P) ───
-  // Combined column is at P. OA Balance P11, CPF Refund P12, Total Available OA P13
-  var cpfOACombined=getNum($("P13")); // Total Available OA Combined
-  var totalFunds=getNum($("P22"));    // Total Cash + CPF Available Combined
+  // ─── Available Funds / CPF / Cash (right section, cols O-T) ───
+  // Combined column is T (sheet cols O P Q R S T: label|Sean|Stephanie|Combined with gaps)
+  // Actually from Excel dump: P=Sean, R=Stephanie, T=Combined
+  var cpfOACombined=getNum($("T13"));  // Total Available OA Combined
+  var totalFunds=getNum($("T22"));     // Total Cash + CPF Available Combined
 
-  // ─── Max Loan section (row 30, Combined at H30) ───
-  var maxLoan=getNum($("H30"));
-  var maxLTV=getStr($("H26"))||"75%";
+  // ─── Max Loan section (Combined at H) ───
+  var maxLTV=getPct($("H26"))||"75%";  // stored as 0.75, formatted as "75%"
   var maxTenure=getNum($("H27"))||22;
+  var maxLoan=getNum($("H30"));        // Max Loan quantum Combined (Private row 30)
 
-  // ─── Stress Test / Agent footer ───
-  var stressRate=getStr($("K34"))||"4%";
-  var agentName=getStr($("D36"));
-  var mobile=getStr($("D37"));
-  var resNum=getStr($("D38"));
-  var datePrepared=getStr($("D39"));
-
-  // ─── Property Type label (at C6 header area, value at F6) ───
-  var propType=getStr($("F6"))||getStr($("C6"))||"Private Property";
+  // ─── Footer: agent info (col K, rows 34-39) ───
+  var stressRate=getPct($("K34"))||"4%";
+  var agentName=getStr($("K36"));      // Prepared by → Jackie
+  var mobile=getStr($("K37"));
+  var resNum=getStr($("K38"));
+  var datePrepared=getStr($("K39"));
 
   return{
     clientName1:clientName1,clientName2:clientName2,propertyAddress:propertyAddress,
@@ -201,45 +215,39 @@ function parseProfile(grid){
 }
 
 function parseScenario(grid){
-  // Detect row offset — landmark "Purchase Structure" is at sheet row 16
-  var off=detectRowOffset(grid,"Purchase Structure",16);
-  // Fallback: try "Loan Affordaibility" at row 7
-  if(off===0){
-    var off2=detectRowOffset(grid,"Loan Affordaibility",7);
-    if(off2!==0)off=off2;
-  }
+  // Landmark "Loan Affordaibility" is at sheet row 7 col C (note: typo in sheet preserved)
+  // With headers=0&range=A1 this should also be at grid idx 6, so offset=0
+  var off=detectRowOffset(grid,"Loan Affordaibility",7);
   function $(ref){return cellAtOffset(grid,ref,off)}
 
   // ─── Purchase Structure (Combined column = K) ───
-  var price=getNum($("K18"));           // Purchase price Combined
-  var ltvPct=getStr($("J23"))||"75%";   // LTV % Combined
-  var loanAmt=getNum($("K23"));         // LTV $ Combined
+  var price=getNum($("K18"));           // Purchase price Combined = 2,000,000
+  var ltvPct=getPct($("J23"))||"75%";   // LTV % Combined = 75%
+  var loanAmt=getNum($("K23"));         // Loan $ Combined = 1,500,000
 
-  // ─── Loan details ───
-  var tenure=getNum($("K28"));          // Loan Tenure (Years) Combined
-  var intRate=getStr($("K29"))||"1.5%"; // Assume Interest Combined
-  var instalment=getNum($("K30"));      // Monthly Instalment Combined
+  // ─── Loan details (Combined at K) ───
+  var tenure=getNum($("K28"));          // Loan Tenure = 22
+  var intRate=getPct($("K29"))||"1.5%"; // Assume Interest = 1.5%
+  var instalment=getNum($("K30"));      // Monthly Instalment = 6,674
 
-  // ─── Pledging / Unpledge (Combined column K) ───
-  var pledging=getNum($("K33"));        // Pledging of funds (48 mths)
-  var unpledge=getNum($("K34"));        // Unpledge / Show funds
+  // ─── Pledging / Unpledge ───
+  var pledging=getNum($("K33"));        // 199,603
+  var unpledge=getNum($("K34"));        // 665,343
 
-  // ─── Remaining balance section (RIGHT side, Combined column = R) ───
-  var bsd=Math.abs(getNum($("R23")));   // Less Stamp Duty Combined
-  // CPF Balance & Cash Balance in "Remaining balance" sub-section
-  var cpfBal=getNum($("R31"));          // CPF Balance Combined (Remaining)
-  var cashBal=getNum($("R32"));         // Cash Balance Combined (Remaining)
-  var totalRemaining=getNum($("R33")); // Total Combined
-  // If total cell is empty, compute it
+  // ─── Remaining balance (RIGHT side, Combined = R) ───
+  var bsd=Math.abs(getNum($("R23")));   // 69,600
+  var cpfBal=getNum($("R31"));          // 138,074
+  var cashBal=getNum($("R32"));         // 229,136
+  var totalRemaining=getNum($("R33")); // 367,210
   if(!totalRemaining)totalRemaining=cpfBal+cashBal;
 
-  // ─── Monthly Instalment breakdown (bottom right section) ───
-  var cpfContrib=getNum($("R37"));      // CPF OA Distributon Combined
-  var cashRepay=getNum($("R38"));       // Cash Repayment Per mth Combined
+  // ─── Monthly breakdown (bottom right) ───
+  var cpfContrib=getNum($("R37"));      // CPF OA Distributon = 1,680
+  var cashRepay=getNum($("R38"));       // Cash Repayment = 4,994
 
   // ─── Reserves ───
-  var reserveMonths=getNum($("R41"));   // Number of Months Combined
-  var reserveYears=getNum($("R42"));    // Number of Years Combined
+  var reserveMonths=getNum($("R41"));   // 73.5
+  var reserveYears=getNum($("R42"));    // 6.1
 
   return{price:price,ltvPct:ltvPct,loanAmt:loanAmt,tenure:tenure,intRate:intRate,instalment:instalment,pledging:pledging,unpledge:unpledge,bsd:bsd,cpfBal:cpfBal,cashBal:cashBal,totalRemaining:totalRemaining,cpfContrib:cpfContrib,cashRepay:cashRepay,reserveMonths:reserveMonths,reserveYears:reserveYears,_rowOffset:off}
 }
@@ -289,7 +297,7 @@ export default function FinancialSummary(){
   var fetchData=useCallback(function(){
     var sheetId=extractSheetId(sheetUrl);if(!sheetId){setError("Invalid URL.");return}
     setLoading(true);setError("");setProfile(null);setScenarioData(null);setDebugInfo(null);
-    var baseUrl="https://docs.google.com/spreadsheets/d/"+sheetId+"/gviz/tq?tqx=out:json&sheet=";
+    var baseUrl="https://docs.google.com/spreadsheets/d/"+sheetId+"/gviz/tq?tqx=out:json&headers=0&range=A1:AZ60&sheet=";
     Promise.all([
       fetch(baseUrl+encodeURIComponent("1. Profile Affordability")).then(function(r){if(!r.ok)throw new Error("Cannot access. Share as 'Anyone with link'.");return r.text()}),
       fetch(baseUrl+encodeURIComponent(tabMap[scenario])).then(function(r){if(!r.ok)throw new Error("Tab not found.");return r.text()})
@@ -297,7 +305,7 @@ export default function FinancialSummary(){
       var pGrid=parseGvizJson(results[0]);var sGrid=parseGvizJson(results[1]);
       var p=parseProfile(pGrid);var s=parseScenario(sGrid);
       // Field sources for debug — all direct cell refs now
-      var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K7",sellingPrice:"L8",outstandingLoan:"L9",cpfRefund:"L19",agentPct:"K21",agentFee:"L21",netCash:"L27",b1Age:"D9",b2Age:"F9",b1Emp:"D15",b2Emp:"F15",b1Inc:"D19",b2Inc:"F19",cpfOACombined:"P13",totalFunds:"P22",maxLoan:"H30",maxLTV:"H26",maxTenure:"H27",stressRate:"K34",agentName:"D36",mobile:"D37",resNum:"D38",datePrepared:"D39",propType:"F6",_rowOffset:"(offset)"};
+      var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K8",sellingPrice:"L9",outstandingLoan:"L10",cpfRefund:"L19",agentPct:"K21",agentFee:"L21",netCash:"L27",b1Age:"D9",b2Age:"F9",b1Emp:"D15",b2Emp:"F15",b1Inc:"D19",b2Inc:"F19",cpfOACombined:"T13",totalFunds:"T22",maxLoan:"H30",maxLTV:"H26",maxTenure:"H27",stressRate:"K34",agentName:"K36",mobile:"K37",resNum:"K38",datePrepared:"K39",propType:"D6",_rowOffset:"(offset)"};
       var sSrc={price:"K18",ltvPct:"J23",loanAmt:"K23",tenure:"K28",intRate:"K29",instalment:"K30",pledging:"K33",unpledge:"K34",bsd:"R23",cpfBal:"R31",cashBal:"R32",totalRemaining:"R33",cpfContrib:"R37",cashRepay:"R38",reserveMonths:"R41",reserveYears:"R42",_rowOffset:"(offset)"};
       setDebugInfo({p:p,s:s,pSrc:pSrc,sSrc:sSrc,pRows:pGrid.length,sRows:sGrid.length});
       setProfile(p);setScenarioData(s);setLoading(false);
