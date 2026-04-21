@@ -111,98 +111,82 @@ function findVals(grid,label){return findValsInRange(grid,label,{})}
 function getNum(cell){if(!cell)return 0;var v=cell.v;if(typeof v==="number")return v;var s=String(cell.f||cell.v||"").replace(/[$,%\s()]/g,"");var n=parseFloat(s);return isNaN(n)?0:n}
 function getStr(cell){if(!cell)return"";return cell.f||String(cell.v||"")}
 
-function parseProfile(grid){
-  // ─── CONFIRMED CELL ADDRESSES (from Jackie's sheet layout) ───
-  // Client names at D7 and F7 — confirmed
-  var clientName1=getStr(cellAt(grid,"D7"));
-  var clientName2=getStr(cellAt(grid,"F7"));
-  // Fallback: search for "Specially prepared for" row if D7/F7 empty
-  if(!clientName1){
-    var spCell=findVal(grid,"Specially prepared for",1);
-    if(spCell){
-      var spText=getStr(spCell);
-      // Might contain "Sean & Stephanie" — split on & or "and"
-      var parts=spText.split(/\s*[&]\s*|\s+and\s+/i);
-      clientName1=parts[0]||"";
-      clientName2=parts[1]||"";
+// Auto-detect row offset by finding a known landmark label.
+// gviz JSON may skip leading empty rows, so sheet row N != grid index N-1.
+// We find "Borrowers Details" (known to be at sheet row 7) and compute the shift.
+function detectRowOffset(grid,landmark,expectedSheetRow){
+  for(var r=0;r<grid.length;r++){
+    if(!grid[r])continue;
+    for(var c=0;c<grid[r].length;c++){
+      var cell=grid[r][c];if(!cell)continue;
+      var txt=String(cell.display||cell.f||cell.v||"");
+      if(txt.indexOf(landmark)>=0){
+        // Grid row r corresponds to sheet row expectedSheetRow
+        // So offset = (expectedSheetRow - 1) - r  (subtract from sheet row to get grid idx)
+        return (expectedSheetRow-1)-r;
+      }
     }
   }
+  return 0;
+}
 
-  // Property Address at K8 — confirmed
-  var propertyAddress=getStr(cellAt(grid,"K8"));
+// Cell lookup with offset applied — pass "L9" and the offset, get the right grid cell
+function cellAtOffset(grid,ref,rowOffset){
+  var rc=cellRef(ref);if(!rc)return null;
+  var actualRow=rc.row-rowOffset;
+  if(actualRow<0||actualRow>=grid.length)return null;
+  if(!grid[actualRow]||rc.col<0||rc.col>=grid[actualRow].length)return null;
+  return grid[actualRow][rc.col]||null;
+}
 
-  // Target Selling Price at L9, Outstanding Loan at L10, CPF Refund at L19 — confirmed
-  var sellingPrice=getNum(cellAt(grid,"L9"));
-  var outstandingLoan=Math.abs(getNum(cellAt(grid,"L10")));
-  var cpfRefund=Math.abs(getNum(cellAt(grid,"L19")));
+function parseProfile(grid){
+  // ─── Detect row offset using "Borrowers Details" landmark (expected at sheet row 7) ───
+  var off=detectRowOffset(grid,"Borrowers Details",7);
 
-  // Agent name at L36, CEA number at L38 — confirmed
-  var agentName=getStr(cellAt(grid,"L36"));
-  var resNum=getStr(cellAt(grid,"L38"));
+  // Shorthand: get cell at a sheet ref
+  function $(ref){return cellAtOffset(grid,ref,off)}
 
-  // ─── BORROWER ROWS — restricted column band (left side of profile tab) ───
-  // Borrower columns are typically D (3) and F (5) — limit search to col range 0..7
-  var borrowerBand={minCol:0,maxCol:7};
+  // ─── Client info ───
+  var clientName1=getStr($("D7"));
+  var clientName2=getStr($("F7"));
 
-  // Ages — search within borrower band only
-  var ageVals=findValsInRange(grid,"Age",borrowerBand);
-  var b1Age=ageVals[0]?getStr(ageVals[0]):"";
-  var b2Age=ageVals[1]?getStr(ageVals[1]):"";
+  // ─── Property section (Sale of Property, cols J-L) ───
+  // Property Address is at K7 (or merged K7:L7)
+  var propertyAddress=getStr($("K7"))||getStr($("L7"));
+  var sellingPrice=getNum($("L8"));
+  var outstandingLoan=Math.abs(getNum($("L9")));
+  var cpfRefund=Math.abs(getNum($("L19"))); // "Total CPF Usage"
+  var agentPct=getStr($("K21"))||"2%";
+  var agentFee=Math.abs(getNum($("L21")));
+  var netCash=getNum($("L27"));
 
-  // Employment type — restrict to borrower band (avoids hitting a later section)
-  var empVals=findValsInRange(grid,"Employment Type",borrowerBand);
-  var b1Emp=empVals[0]?getStr(empVals[0]):"";
-  var b2Emp=empVals[1]?getStr(empVals[1]):"";
+  // ─── Borrower details (cols D & F) ───
+  var b1Age=getStr($("D9"));
+  var b2Age=getStr($("F9"));
+  var b1Emp=getStr($("D15"));
+  var b2Emp=getStr($("F15"));
+  var b1Inc=getNum($("D19"));
+  var b2Inc=getNum($("F19"));
 
-  // Total income — restrict to borrower band
-  var incVals=findValsInRange(grid,"Total income",borrowerBand);
-  var b1Inc=incVals[0]?getNum(incVals[0]):0;
-  var b2Inc=incVals[1]?getNum(incVals[1]):0;
+  // ─── Available Funds (right side, cols O-P) ───
+  // Combined column is at P. OA Balance P11, CPF Refund P12, Total Available OA P13
+  var cpfOACombined=getNum($("P13")); // Total Available OA Combined
+  var totalFunds=getNum($("P22"));    // Total Cash + CPF Available Combined
 
-  // Property Type — restrict to top-of-sheet band (before row 12)
-  var propTypeCell=findValInRange(grid,"Property Type",{minRow:0,maxRow:11,colsRight:1});
-  var propType=propTypeCell?getStr(propTypeCell):"";
+  // ─── Max Loan section (row 30, Combined at H30) ───
+  var maxLoan=getNum($("H30"));
+  var maxLTV=getStr($("H26"))||"75%";
+  var maxTenure=getNum($("H27"))||22;
 
-  // ─── FIGURES IN COLUMN L (index 11) — scoped search in right column ───
-  // Net Cash Proceeds / Total Available OA / Total Cash+CPF / Max Loan / Max LTV / Tenure / Stress test
-  var rightBand={minCol:0,maxCol:11};
+  // ─── Stress Test / Agent footer ───
+  var stressRate=getStr($("K34"))||"4%";
+  var agentName=getStr($("D36"));
+  var mobile=getStr($("D37"));
+  var resNum=getStr($("D38"));
+  var datePrepared=getStr($("D39"));
 
-  var netCashVals=findValsInRange(grid,"Net Cash Proceeds",rightBand);
-  var netCash=netCashVals.length>0?getNum(netCashVals[netCashVals.length-1]):0;
-
-  var oaVals=findValsInRange(grid,"Total Available OA",rightBand);
-  var cpfOACombined=oaVals.length>0?getNum(oaVals[oaVals.length-1]):0;
-
-  var totalVals=findValsInRange(grid,"Total Cash + CPF",rightBand);
-  var totalFunds=totalVals.length>0?getNum(totalVals[totalVals.length-1]):0;
-
-  var maxLoanVals=findValsInRange(grid,"Max Loan quantum",rightBand);
-  var maxLoan=maxLoanVals.length>0?getNum(maxLoanVals[maxLoanVals.length-1]):0;
-
-  var tenureVals=findValsInRange(grid,"Max Loan tenure",rightBand);
-  var maxTenure=tenureVals.length>0?getNum(tenureVals[0]):22;
-
-  var ltvVals=findValsInRange(grid,"Max Loan to value",rightBand);
-  var maxLTV=ltvVals.length>0?getStr(ltvVals[0]):"75%";
-
-  var stressCell=findValInRange(grid,"Stress Test Interest",rightBand);
-  var stressRate=stressCell?getStr(stressCell):"4%";
-
-  // Agent fee (percent + dollar amount) — search the Sale Proceeds section (rows 10-25)
-  // Use specific labels to avoid matching the "Agent Name" cell at L36
-  var agentFeeVals=findValsInRange(grid,"Agent (incl",{minRow:9,maxRow:25,maxCol:11});
-  if(agentFeeVals.length===0)agentFeeVals=findValsInRange(grid,"Agent Fee",{minRow:9,maxRow:25,maxCol:11});
-  if(agentFeeVals.length===0)agentFeeVals=findValsInRange(grid,"Agent",{minRow:9,maxRow:25,maxCol:11});
-  var agentPct=agentFeeVals[0]?getStr(agentFeeVals[0]):"2%";
-  var agentFee=agentFeeVals[1]?Math.abs(getNum(agentFeeVals[1])):(agentFeeVals[0]?Math.abs(getNum(agentFeeVals[0])):0);
-
-  // Mobile number — search near the agent section (rows 36-42)
-  var mobileCell=findValInRange(grid,"Mobile",{minRow:36,maxRow:42,maxCol:11});
-  var mobile=mobileCell?getStr(mobileCell):"";
-
-  // Date prepared — near the top or agent footer
-  var dateCell=findVal(grid,"Date Prepared",1);
-  if(!dateCell)dateCell=findVal(grid,"Date",1);
+  // ─── Property Type label (at C6 header area, value at F6) ───
+  var propType=getStr($("F6"))||getStr($("C6"))||"Private Property";
 
   return{
     clientName1:clientName1,clientName2:clientName2,propertyAddress:propertyAddress,
@@ -211,78 +195,53 @@ function parseProfile(grid){
     cpfRefund:cpfRefund,agentPct:agentPct,agentFee:agentFee,netCash:netCash,
     cpfOACombined:cpfOACombined,totalFunds:totalFunds,maxLoan:maxLoan,maxTenure:maxTenure,
     stressRate:stressRate,agentName:agentName,mobile:mobile,resNum:resNum,
-    datePrepared:dateCell?getStr(dateCell):"",maxLTV:maxLTV,propType:propType,
+    datePrepared:datePrepared,maxLTV:maxLTV,propType:propType,
+    _rowOffset:off
   }
 }
 
 function parseScenario(grid){
-  // Scenario tab has LEFT side (cols B-L, idx 1-11) for purchase/loan/instalment
-  // and RIGHT side (cols N-R, idx 13-17) for "Remaining Balance" section
-  var LEFT={minCol:0,maxCol:11};
-  var RIGHT={minCol:12,maxCol:20};
-
-  // ─── LEFT BAND: Purchase / Loan / Instalment / Pledging ───
-  var priceVals=findValsInRange(grid,"Purchase price",LEFT);
-  var price=priceVals.length>0?getNum(priceVals[priceVals.length-1]):0;
-
-  // "Loan To Value" row has: label | LTV% | loan $  — grab them from LEFT band
-  var ltvRow=findValsInRange(grid,"Loan To Value",LEFT);
-  var ltvPct="75%",loanAmt=0;
-  if(ltvRow.length>0){
-    // find the percentage cell and the dollar cell
-    for(var i=0;i<ltvRow.length;i++){
-      var v=ltvRow[i];
-      var fstr=String(v.f||"");
-      if(fstr.indexOf("%")>=0&&ltvPct==="75%"){ltvPct=getStr(v)}
-      else{var n=getNum(v);if(n>10000)loanAmt=n}
-    }
-    if(loanAmt===0&&ltvRow.length>=2)loanAmt=getNum(ltvRow[ltvRow.length-1]);
+  // Detect row offset — landmark "Purchase Structure" is at sheet row 16
+  var off=detectRowOffset(grid,"Purchase Structure",16);
+  // Fallback: try "Loan Affordaibility" at row 7
+  if(off===0){
+    var off2=detectRowOffset(grid,"Loan Affordaibility",7);
+    if(off2!==0)off=off2;
   }
+  function $(ref){return cellAtOffset(grid,ref,off)}
 
-  var tenVals=findValsInRange(grid,"Loan Tenure",LEFT);
-  var tenure=tenVals.length>0?getNum(tenVals[tenVals.length-1]):22;
+  // ─── Purchase Structure (Combined column = K) ───
+  var price=getNum($("K18"));           // Purchase price Combined
+  var ltvPct=getStr($("J23"))||"75%";   // LTV % Combined
+  var loanAmt=getNum($("K23"));         // LTV $ Combined
 
-  var intVals=findValsInRange(grid,"Assume Interest",LEFT);
-  var intRate=intVals.length>0?getStr(intVals[intVals.length-1]):"1.5%";
+  // ─── Loan details ───
+  var tenure=getNum($("K28"));          // Loan Tenure (Years) Combined
+  var intRate=getStr($("K29"))||"1.5%"; // Assume Interest Combined
+  var instalment=getNum($("K30"));      // Monthly Instalment Combined
 
-  // Monthly Instalment in LEFT band (there's also one in RIGHT — we take LEFT here for the headline number)
-  var instVals=findValsInRange(grid,"Monthly Instalment",LEFT);
-  var instalment=instVals.length>0?getNum(instVals[instVals.length-1]):0;
+  // ─── Pledging / Unpledge (Combined column K) ───
+  var pledging=getNum($("K33"));        // Pledging of funds (48 mths)
+  var unpledge=getNum($("K34"));        // Unpledge / Show funds
 
-  var pledgeVals=findValsInRange(grid,"Pledging of funds",LEFT);
-  var pledging=pledgeVals.length>0?getNum(pledgeVals[pledgeVals.length-1]):0;
+  // ─── Remaining balance section (RIGHT side, Combined column = R) ───
+  var bsd=Math.abs(getNum($("R23")));   // Less Stamp Duty Combined
+  // CPF Balance & Cash Balance in "Remaining balance" sub-section
+  var cpfBal=getNum($("R31"));          // CPF Balance Combined (Remaining)
+  var cashBal=getNum($("R32"));         // Cash Balance Combined (Remaining)
+  var totalRemaining=getNum($("R33")); // Total Combined
+  // If total cell is empty, compute it
+  if(!totalRemaining)totalRemaining=cpfBal+cashBal;
 
-  var unpledgeVals=findValsInRange(grid,"Unpledge",LEFT);
-  var unpledge=unpledgeVals.length>0?getNum(unpledgeVals[unpledgeVals.length-1]):0;
+  // ─── Monthly Instalment breakdown (bottom right section) ───
+  var cpfContrib=getNum($("R37"));      // CPF OA Distributon Combined
+  var cashRepay=getNum($("R38"));       // Cash Repayment Per mth Combined
 
-  // ─── RIGHT BAND: Remaining Balance section ───
-  var bsdVals=findValsInRange(grid,"Less Stamp Duty",RIGHT);
-  if(bsdVals.length===0)bsdVals=findValsInRange(grid,"Buyer Stamp Duty",RIGHT);
-  if(bsdVals.length===0)bsdVals=findValsInRange(grid,"BSD",RIGHT);
-  var bsd=bsdVals.length>0?Math.abs(getNum(bsdVals[bsdVals.length-1])):0;
+  // ─── Reserves ───
+  var reserveMonths=getNum($("R41"));   // Number of Months Combined
+  var reserveYears=getNum($("R42"));    // Number of Years Combined
 
-  var cpfBalVals=findValsInRange(grid,"CPF Balance",RIGHT);
-  var cpfBal=cpfBalVals.length>0?getNum(cpfBalVals[cpfBalVals.length-1]):0;
-
-  var cashBalVals=findValsInRange(grid,"Cash Balance",RIGHT);
-  var cashBal=cashBalVals.length>0?getNum(cashBalVals[cashBalVals.length-1]):0;
-
-  var cpfContribVals=findValsInRange(grid,"CPF OA Distribut",RIGHT);
-  if(cpfContribVals.length===0)cpfContribVals=findValsInRange(grid,"CPF OA Contrib",RIGHT);
-  var cpfContrib=cpfContribVals.length>0?getNum(cpfContribVals[cpfContribVals.length-1]):0;
-
-  var cashRepVals=findValsInRange(grid,"Cash Repayment",RIGHT);
-  var cashRepay=cashRepVals.length>0?getNum(cashRepVals[cashRepVals.length-1]):0;
-
-  var monthsVals=findValsInRange(grid,"Number of Months",RIGHT);
-  var reserveMonths=monthsVals.length>0?getNum(monthsVals[monthsVals.length-1]):0;
-
-  var yearsVals=findValsInRange(grid,"Number of Years",RIGHT);
-  var reserveYears=yearsVals.length>0?getNum(yearsVals[yearsVals.length-1]):0;
-
-  var totalRemaining=cpfBal+cashBal;
-
-  return{price:price,ltvPct:ltvPct,loanAmt:loanAmt,tenure:tenure,intRate:intRate,instalment:instalment,pledging:pledging,unpledge:unpledge,bsd:bsd,cpfBal:cpfBal,cashBal:cashBal,totalRemaining:totalRemaining,cpfContrib:cpfContrib,cashRepay:cashRepay,reserveMonths:reserveMonths,reserveYears:reserveYears}
+  return{price:price,ltvPct:ltvPct,loanAmt:loanAmt,tenure:tenure,intRate:intRate,instalment:instalment,pledging:pledging,unpledge:unpledge,bsd:bsd,cpfBal:cpfBal,cashBal:cashBal,totalRemaining:totalRemaining,cpfContrib:cpfContrib,cashRepay:cashRepay,reserveMonths:reserveMonths,reserveYears:reserveYears,_rowOffset:off}
 }
 
 function ReportView(props){
@@ -337,9 +296,9 @@ export default function FinancialSummary(){
     ]).then(function(results){
       var pGrid=parseGvizJson(results[0]);var sGrid=parseGvizJson(results[1]);
       var p=parseProfile(pGrid);var s=parseScenario(sGrid);
-      // Field sources for debug (what cell/label each was pulled from)
-      var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K8",sellingPrice:"L9",outstandingLoan:"L10",cpfRefund:"L19",agentName:"L36",resNum:"L38",b1Age:"label:Age [c0-7]",b2Age:"label:Age [c0-7]",b1Emp:"label:Employment Type [c0-7]",b2Emp:"label:Employment Type [c0-7]",b1Inc:"label:Total income [c0-7]",b2Inc:"label:Total income [c0-7]",propType:"label:Property Type [r0-11]",netCash:"label:Net Cash Proceeds",cpfOACombined:"label:Total Available OA",totalFunds:"label:Total Cash + CPF",maxLoan:"label:Max Loan quantum",maxTenure:"label:Max Loan tenure",maxLTV:"label:Max Loan to value",stressRate:"label:Stress Test Interest",agentPct:"label:Agent",agentFee:"label:Agent",mobile:"label:Mobile [r36-42]",datePrepared:"label:Date"};
-      var sSrc={price:"label:Purchase price [LEFT]",loanAmt:"label:Loan To Value [LEFT]",ltvPct:"label:Loan To Value [LEFT]",tenure:"label:Loan Tenure [LEFT]",intRate:"label:Assume Interest [LEFT]",instalment:"label:Monthly Instalment [LEFT]",pledging:"label:Pledging of funds [LEFT]",unpledge:"label:Unpledge [LEFT]",bsd:"label:Less Stamp Duty [RIGHT]",cpfBal:"label:CPF Balance [RIGHT]",cashBal:"label:Cash Balance [RIGHT]",cpfContrib:"label:CPF OA Distribut [RIGHT]",cashRepay:"label:Cash Repayment [RIGHT]",reserveMonths:"label:Number of Months [RIGHT]",reserveYears:"label:Number of Years [RIGHT]",totalRemaining:"cpfBal+cashBal"};
+      // Field sources for debug — all direct cell refs now
+      var pSrc={clientName1:"D7",clientName2:"F7",propertyAddress:"K7",sellingPrice:"L8",outstandingLoan:"L9",cpfRefund:"L19",agentPct:"K21",agentFee:"L21",netCash:"L27",b1Age:"D9",b2Age:"F9",b1Emp:"D15",b2Emp:"F15",b1Inc:"D19",b2Inc:"F19",cpfOACombined:"P13",totalFunds:"P22",maxLoan:"H30",maxLTV:"H26",maxTenure:"H27",stressRate:"K34",agentName:"D36",mobile:"D37",resNum:"D38",datePrepared:"D39",propType:"F6",_rowOffset:"(offset)"};
+      var sSrc={price:"K18",ltvPct:"J23",loanAmt:"K23",tenure:"K28",intRate:"K29",instalment:"K30",pledging:"K33",unpledge:"K34",bsd:"R23",cpfBal:"R31",cashBal:"R32",totalRemaining:"R33",cpfContrib:"R37",cashRepay:"R38",reserveMonths:"R41",reserveYears:"R42",_rowOffset:"(offset)"};
       setDebugInfo({p:p,s:s,pSrc:pSrc,sSrc:sSrc,pRows:pGrid.length,sRows:sGrid.length});
       setProfile(p);setScenarioData(s);setLoading(false);
     }).catch(function(err){setError(err.message);setLoading(false)});
