@@ -1,0 +1,29 @@
+# Avenue 88 Tools
+
+> Property tools and new-launch guides for Singapore home buyers by Jackie Mang (CEA Reg. No. R008878E), a salesperson with Huttons Asia Pte Ltd. Independent of any developer.
+
+## Thomson Reserve (Bright Hill Drive, District 20)
+
+- [Thomson Reserve balance units, prices and stack guide](https://avenue88tools.com/thomson-reserve/): 119 of 1,268 homes left as of 15 Nov 2026, indicative prices by stack and floor, facing and sun, common questions answered.
+- [Stack 07](https://avenue88tools.com/thomson-reserve/stack-07.html): 2-Bedroom, Blk 1, faces north-north-west, 3 available.
+- [Stack 08](https://avenue88tools.com/thomson-reserve/stack-08.html): 2-Bedroom, Blk 1, faces north-north-west, 7 available.
+- [Stack 16](https://avenue88tools.com/thomson-reserve/stack-16.html): 2-Bedroom, Blk 3, faces north-north-east, 6 available.
+- [Stack 17](https://avenue88tools.com/thomson-reserve/stack-17.html): 2-Bedroom, Blk 3, faces north-north-east, 5 available.
+- [Stack 19](https://avenue88tools.com/thomson-reserve/stack-19.html): 5-Bedroom Suite, Blk 5, faces south-west, 1 available.
+- [Stack 20](https://avenue88tools.com/thomson-reserve/stack-20.html): 2-Bedroom Premium, Blk 5, faces south-west, 9 available.
+- [Stack 21](https://avenue88tools.com/thomson-reserve/stack-21.html): 2-Bedroom Premium, Blk 5, faces south-west, 4 available.
+- [Stack 26](https://avenue88tools.com/thomson-reserve/stack-26.html): 2-Bedroom Premium, Blk 5, faces north-east, 23 available.
+- [Stack 29](https://avenue88tools.com/thomson-reserve/stack-29.html): 2-Bedroom Premium, Blk 7, faces north-west, 24 available.
+- [Stack 30](https://avenue88tools.com/thomson-reserve/stack-30.html): 2-Bedroom Premium, Blk 7, faces north-west, 13 available.
+- [Stack 35](https://avenue88tools.com/thomson-reserve/stack-35.html): 2-Bedroom Premium, Blk 7, faces south-east, 11 available.
+- [Stack 38](https://avenue88tools.com/thomson-reserve/stack-38.html): 2-Bedroom Premium, Blk 9, faces north-north-east, 3 available.
+- [Stack 42](https://avenue88tools.com/thomson-reserve/stack-42.html): 2-Bedroom Premium, Blk 9, faces south-south-west, 1 available.
+- [Stack 52](https://avenue88tools.com/thomson-reserve/stack-52.html): 2-Bedroom, Blk 11, faces south-west, 8 available.
+- [Stack 53](https://avenue88tools.com/thomson-reserve/stack-53.html): 2-Bedroom Premium, Blk 11, faces south-west, 1 available.
+- [Thomson Reserve 3D model](https://avenue88tools.com/thomson-reserve/model.html): interactive block model with price, floor plan and sun guide per unit.
+
+## Notes
+
+- Availability and prices are indicative snapshots dated on each page and change without notice.
+- Facing and sunlight are modelled estimates.
+- Contact: WhatsApp +65 9733 6584.
