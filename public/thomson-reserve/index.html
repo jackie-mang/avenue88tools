@@ -13,7 +13,7 @@
 <meta property="og:title" content="Thomson Reserve balance units, prices and stack guide (Nov 2026)">
 <meta property="og:description" content="119 of 1,268 homes left at Thomson Reserve, Bright Hill Drive, as of 15 Nov 2026. Indicative prices by stack and floor, facing and sun for every stack, with a 3D model. By Jackie Mang, CEA R008878E, Huttons.">
 <meta property="og:url" content="https://avenue88tools.com/thomson-reserve/">
-<meta property="og:image" content="https://avenue88tools.com/thomson-reserve/og.jpg">
+<meta property="og:image" content="https://avenue88tools.com/thomson-reserve/hero.jpg">
 <meta property="og:locale" content="en_SG">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="author" content="Jackie Mang, CEA R008878E">
@@ -131,6 +131,18 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
   .st .act,.st .units{grid-column:1/-1}
 }
 
+/* live model at the top of the page */
+.stage{position:relative;margin:0;min-width:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg-hi)}
+.stage img{display:block;width:100%;height:auto;aspect-ratio:8/5;object-fit:cover}
+.stage iframe{display:block;width:100%;height:min(76vh,680px);border:0;background:var(--bg-hi)}
+.stage .go{position:absolute;left:50%;top:calc(50% - 22px);transform:translate(-50%,-50%);min-height:52px;padding:0 26px;font-size:18px;box-shadow:0 6px 24px rgba(0,0,0,.28)}
+.stage.live .go{display:none}
+.stage figcaption{padding:10px 14px;font-size:14.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between}
+.stage figcaption a{color:var(--on);font-weight:600}
+.planwrap{margin-top:18px;max-width:760px}
+.planwrap .plan{margin:0}
+@media (min-width:940px){ .hero .in.wide{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)} }
+@media (max-width:939px){ .hero .in.wide{gap:0} .hero .in.wide > div:first-child{display:contents} .hero .in.wide > .stage{order:1;margin-top:16px} .hero .in.wide .lede,.hero .in.wide .left,.hero .in.wide .asof,.hero .in.wide .cta{order:2} }
 /* questions */
 .count{margin-top:12px;font-size:18px}
 .count b{font-family:var(--display);font-weight:700}
@@ -210,7 +222,7 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
 
 <main>
 <section class="hero">
-  <div class="in">
+  <div class="in wide">
     <div>
       <p class="eyebrow">Thomson Reserve · Bright Hill Drive · District 20</p>
       <h1>Thomson Reserve balance units, prices and stack guide</h1>
@@ -230,7 +242,20 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
         <a class="btn ghost" href="#stacks">Compare the stacks</a>
       </div>
     </div>
-    <figure class="plan" style="margin:0">
+    <figure class="stage" data-model="model.html">
+      <img src="hero.jpg" width="1200" height="750" alt="3D model of the six Thomson Reserve blocks on Bright Hill Drive with the neighbouring buildings" fetchpriority="high">
+      <a class="btn go" href="model.html">Explore in 3D</a>
+      <figcaption>Tap any available unit for its price, floor plan and sun. <a class="full" href="model.html">Open full screen</a></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sec" id="stacks">
+  <div class="in">
+    <h2>Every stack that still has homes</h2>
+    <p class="sub">A stack is one vertical line of the same layout. Units in a stack share the same facing, so the choice between stacks comes down to outlook and sun, and the choice within a stack comes down to floor. Open any stack in the 3D model to see where direct sunlight lands inside the home. Request a price analysis and I'll compare your shortlisted units on price, psf, facing and sun.</p>
+    <div class="planwrap">
+    <figure class="plan">
       <svg viewBox="0 0 400 169" role="img" aria-label="Site plan of the six Thomson Reserve blocks. Stacks that still have homes are coloured by unit type.">
         <polygon class="s" points="383.8,88.0 380.4,86.1 380.8,85.3 380.8,85.1 378.3,83.7 378.1,83.7 376.0,87.5 374.4,86.7 374.2,86.7 373.4,87.3 373.3,87.2 373.1,87.2 370.6,91.6 370.2,91.5 368.2,95.0 368.1,95.4 369.5,96.1 369.9,96.2 371.1,94.1 379.1,98.5 379.5,98.6 381.0,95.8 381.0,95.6 380.6,94.0 383.7,88.3"/>
         <polygon class="s" points="369.1,95.7 368.3,97.0 368.3,97.2 371.4,99.0 369.6,102.4 369.6,102.6 375.0,105.6 375.3,105.6 376.5,103.4 377.4,103.9 377.7,103.9 379.1,101.3 379.1,101.2 378.8,101.0 379.9,98.9 379.9,98.6 373.9,95.3 373.7,95.4 373.4,95.9 372.0,95.2 371.7,95.1 370.9,96.6 369.3,95.7"/>
@@ -302,13 +327,7 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
         <span><i style="background:var(--sold)"></i>Fully sold stack</span>
       </figcaption>
     </figure>
-  </div>
-</section>
-
-<section class="sec" id="stacks">
-  <div class="in">
-    <h2>Every stack that still has homes</h2>
-    <p class="sub">A stack is one vertical line of the same layout. Units in a stack share the same facing, so the choice between stacks comes down to outlook and sun, and the choice within a stack comes down to floor. Open any stack in the 3D model to see where direct sunlight lands inside the home. Request a price analysis and I'll compare your shortlisted units on price, psf, facing and sun.</p>
+    </div>
     <div class="grp">
       <h3><i style="background:var(--t2)"></i>2-Bedroom <small class="num">592 sq ft · 29 available in 5 stacks</small></h3>
       <div class="rows">
@@ -521,6 +540,18 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
 <script src="agent.js"></script>
 <script src="agent-ui.js"></script>
 <script>
+/* the live 3D model loads in place on wide screens; on phones the button opens it full screen */
+(function(){
+  [].forEach.call(document.querySelectorAll('.stage'), function(st){
+    var go = st.querySelector('.go'); if(!go) return;
+    go.addEventListener('click', function(e){
+      if(!window.matchMedia('(min-width:860px)').matches) return;
+      e.preventDefault();
+      var f = document.createElement('iframe'); f.src = st.getAttribute('data-model'); f.title = 'Thomson Reserve 3D model'; f.setAttribute('allowfullscreen', '');
+      var im = st.querySelector('img'); st.replaceChild(f, im); st.classList.add('live');
+    });
+  });
+})();
 /* link each stack row to its outline on the site plan */
 (function(){
   function pair(n, on){

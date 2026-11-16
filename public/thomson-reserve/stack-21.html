@@ -12,7 +12,7 @@
 <meta property="og:title" content="Thomson Reserve Stack 21: 2-Bedroom Premium prices, facing and sun (Nov 2026)">
 <meta property="og:description" content="Stack 21 at Thomson Reserve (Blk 5, Luxury Collection): 2-Bedroom Premium, 678 sq ft, faces south-west. 4 units available as of 15 Nov 2026, $2.124M to $2.163M indicative.">
 <meta property="og:url" content="https://avenue88tools.com/thomson-reserve/stack-21.html">
-<meta property="og:image" content="https://avenue88tools.com/thomson-reserve/og.jpg">
+<meta property="og:image" content="https://avenue88tools.com/thomson-reserve/hero.jpg">
 <meta property="og:locale" content="en_SG">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="author" content="Jackie Mang, CEA R008878E">
@@ -129,6 +129,18 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
   .st .act,.st .units{grid-column:1/-1}
 }
 
+/* live model at the top of the page */
+.stage{position:relative;margin:0;min-width:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg-hi)}
+.stage img{display:block;width:100%;height:auto;aspect-ratio:8/5;object-fit:cover}
+.stage iframe{display:block;width:100%;height:min(76vh,680px);border:0;background:var(--bg-hi)}
+.stage .go{position:absolute;left:50%;top:calc(50% - 22px);transform:translate(-50%,-50%);min-height:52px;padding:0 26px;font-size:18px;box-shadow:0 6px 24px rgba(0,0,0,.28)}
+.stage.live .go{display:none}
+.stage figcaption{padding:10px 14px;font-size:14.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between}
+.stage figcaption a{color:var(--on);font-weight:600}
+.planwrap{margin-top:18px;max-width:760px}
+.planwrap .plan{margin:0}
+@media (min-width:940px){ .hero .in.wide{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)} }
+@media (max-width:939px){ .hero .in.wide{gap:0} .hero .in.wide > div:first-child{display:contents} .hero .in.wide > .stage{order:1;margin-top:16px} .hero .in.wide .lede,.hero .in.wide .left,.hero .in.wide .asof,.hero .in.wide .cta{order:2} }
 /* questions */
 .count{margin-top:12px;font-size:18px}
 .count b{font-family:var(--display);font-weight:700}
@@ -213,7 +225,12 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
     <h1>Thomson Reserve Stack 21: 2-Bedroom Premium, faces south-west</h1>
     <p class="lede">Stack 21 is a 2-Bedroom Premium layout of 678 sq ft (2 baths) in Block 5 of Thomson Reserve, part of the Luxury Collection, a 30-storey block. Every unit in the stack has the same plan and its balcony faces south-west. As of 15 Nov 2026, 4 units in this stack are available, on floors 27 to 30, at an indicative $2.124M to $2.163M.</p>
     <p class="asof">Updated <time datetime="2026-11-15">15 Nov 2026</time>. Availability and prices are indicative and change without notice; the developer's price list sets each unit's price.</p>
-    <div class="cta"><a class="btn" data-wa="stack" data-stack="21" data-type="2-Bedroom Premium" href="https://wa.me/6597336584?text=Hi%20Jackie%2C%20please%20send%20me%20a%20price%20analysis%20for%20Thomson%20Reserve%20stack%2021%20%282-Bedroom%20Premium%29." target="_blank" rel="noopener">Request price analysis</a><a class="btn ghost" href="model.html#s21">Open Stack 21 in the 3D model</a></div>
+    <div class="cta"><a class="btn" data-wa="stack" data-stack="21" data-type="2-Bedroom Premium" href="https://wa.me/6597336584?text=Hi%20Jackie%2C%20please%20send%20me%20a%20price%20analysis%20for%20Thomson%20Reserve%20stack%2021%20%282-Bedroom%20Premium%29." target="_blank" rel="noopener">Request price analysis</a><a class="btn ghost" href="./">All balance units</a></div>
+    <figure class="stage" data-model="model.html#s21" style="margin-top:22px">
+      <img src="hero.jpg" width="1200" height="750" loading="lazy" alt="3D model of Thomson Reserve; open it to see Stack 21">
+      <a class="btn go" href="model.html#s21">See Stack 21 in 3D</a>
+      <figcaption>Tap any available unit for its price, floor plan and sun. <a class="full" href="model.html#s21">Open full screen</a></figcaption>
+    </figure>
   </div>
 </section>
 <section class="sec">
@@ -255,5 +272,17 @@ h1{font-size:clamp(34px,6vw,58px);font-weight:700;margin-top:8px}
 </footer>
 <script src="agent.js"></script>
 <script src="agent-ui.js"></script>
+<script>/* the live 3D model loads in place on wide screens; on phones the button opens it full screen */
+(function(){
+  [].forEach.call(document.querySelectorAll('.stage'), function(st){
+    var go = st.querySelector('.go'); if(!go) return;
+    go.addEventListener('click', function(e){
+      if(!window.matchMedia('(min-width:860px)').matches) return;
+      e.preventDefault();
+      var f = document.createElement('iframe'); f.src = st.getAttribute('data-model'); f.title = 'Thomson Reserve 3D model'; f.setAttribute('allowfullscreen', '');
+      var im = st.querySelector('img'); st.replaceChild(f, im); st.classList.add('live');
+    });
+  });
+})();</script>
 </body>
 </html>

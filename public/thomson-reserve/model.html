@@ -7,7 +7,7 @@
 <meta name="description" content="Interactive 3D model of Thomson Reserve, Bright Hill Drive. Pick any available unit to see its indicative price, floor plan and where the sun reaches, by time, day and year. By Jackie Mang, CEA R008878E, Huttons.">
 <link rel="canonical" href="https://avenue88tools.com/thomson-reserve/model.html">
 <meta property="og:title" content="Thomson Reserve 3D model">
-<meta property="og:image" content="https://avenue88tools.com/thomson-reserve/og.jpg">
+<meta property="og:image" content="https://avenue88tools.com/thomson-reserve/hero.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&display=swap">
 <style>
 /* Project block model. One generic engine: everything specific to a project comes from the PROJECT data object at the bottom of this file. */
@@ -324,7 +324,9 @@ function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.clas
 /* ---------- units, prices ---------- */
 var typeOf = {}; P.types.forEach(function(t){ typeOf[t.id] = t; });
 var blocks = {}; P.stacks.forEach(function(s){ (blocks[s.b] = blocks[s.b] || []).push(s); });
+var FRAMED = false; try{ FRAMED = window.self !== window.top; }catch(e){ FRAMED = true; }
 var SHOWPX = P.showPrice !== false; if(P.home){ $('home').href = P.home; $('home').querySelector('span').textContent = P.homeLabel || 'Home'; $('home').setAttribute('aria-label', 'Back to ' + (P.homeLabel || 'home')); }
+if(FRAMED && P.agentEdition) $('home').hidden = true;   /* shown inside the guide page: there is nothing to go back to */
 var PX = P.prices || {}, SOLD = {}; (P.sold || []).forEach(function(k){ SOLD[k] = 1; });
 function key(f, n){ return pad(f) + pad(n); }
 function status(f, n){ var k = key(f, n); return SOLD[k] ? 'sold' : PX[k] ? 'open' : 'none'; }
